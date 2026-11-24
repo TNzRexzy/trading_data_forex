@@ -1,0 +1,2429 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        try {
+            const savedTheme = localStorage.getItem('hfm_theme');
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+            }
+        } catch (error) {
+            console.warn('Theme preference could not be loaded:', error);
+        }
+    </script>
+    <title>HFM Cent Trading Journal & Risk Planner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        bordercolor: '#334155'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <section id="authGate" class="auth-background min-h-screen flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-5xl grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center">
+            <div class="hidden lg:block space-y-6 px-4">
+                <div class="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-300">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_16px_4px_rgba(52,211,153,0.5)]"></span>
+                    Private trading workspace
+                </div>
+                <div class="space-y-4">
+                    <p class="text-sm uppercase tracking-[0.3em] text-slate-400">HFM CENT ACCOUNT</p>
+                    <h1 class="text-5xl font-semibold leading-tight text-white">Rencana yang jernih.<br><span class="text-emerald-300">Eksekusi lebih disiplin.</span></h1>
+                    <p class="max-w-xl text-lg leading-relaxed text-slate-300">Simpan jurnal, pantau progres, dan jaga rutinitas trading dalam satu ruang kerja personal yang tersinkron dengan akun Anda.</p>
+                </div>
+                <div class="grid grid-cols-3 gap-3 pt-3">
+                    <div class="glass-panel rounded-2xl p-4"><i data-lucide="chart-no-axes-combined" class="mb-3 h-5 w-5 text-emerald-300"></i><p class="text-sm font-medium text-white">Progres visual</p></div>
+                    <div class="glass-panel rounded-2xl p-4"><i data-lucide="shield-check" class="mb-3 h-5 w-5 text-sky-300"></i><p class="text-sm font-medium text-white">Risk journal</p></div>
+                    <div class="glass-panel rounded-2xl p-4"><i data-lucide="cloud" class="mb-3 h-5 w-5 text-violet-300"></i><p class="text-sm font-medium text-white">Sinkron aman</p></div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-[2rem] p-6 sm:p-9">
+                <div class="mb-8 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300"><i data-lucide="trending-up" class="h-6 w-6"></i></div>
+                        <div><p class="font-semibold text-white">Trading Journal</p><p class="text-xs text-slate-400">Akun personal Anda</p></div>
+                    </div>
+                    <button id="themeToggleAuth" onclick="toggleTheme()" class="rounded-full border border-white/15 bg-white/10 p-2.5 text-slate-200 hover:bg-white/20" type="button" aria-label="Ubah tema" title="Ubah tema">
+                        <i data-lucide="sun-moon" class="h-4 w-4"></i>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Selamat datang</p>
+                    <h2 id="authHeading" class="mt-2 text-3xl font-semibold text-white">Masuk ke akun</h2>
+                    <p id="authSubheading" class="mt-2 text-sm leading-relaxed text-slate-400">Lanjutkan ke dashboard trading personal Anda.</p>
+                </div>
+
+                <form id="authForm" class="space-y-4" onsubmit="handleAuthSubmit(event)">
+                    <div>
+                        <label for="authEmail" class="mb-1.5 block text-sm font-medium text-slate-300">Email</label>
+                        <input id="authEmail" type="email" autocomplete="email" required placeholder="nama@email.com" class="auth-input w-full rounded-xl border px-4 py-3">
+                    </div>
+                    <div>
+                        <label for="authPassword" class="mb-1.5 block text-sm font-medium text-slate-300">Password</label>
+                        <input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="Minimal 8 karakter" class="auth-input w-full rounded-xl border px-4 py-3">
+                    </div>
+                    <div id="authConfirmWrap" class="hidden">
+                        <label for="authConfirmPassword" class="mb-1.5 block text-sm font-medium text-slate-300">Konfirmasi password</label>
+                        <input id="authConfirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Ulangi password" class="auth-input w-full rounded-xl border px-4 py-3">
+                    </div>
+                    <div id="authStatus" role="status" aria-live="polite" class="hidden rounded-xl border px-4 py-3 text-sm"></div>
+                    <button id="authSubmit" type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 font-semibold text-slate-950 shadow-lg shadow-emerald-900/30 hover:-translate-y-0.5 hover:shadow-emerald-500/20">
+                        Masuk <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                    </button>
+                </form>
+
+                <p class="mt-6 text-center text-sm text-slate-400">
+                    <span id="authSwitchPrompt">Belum punya akun?</span>
+                    <button id="authSwitchButton" type="button" onclick="setAuthMode('signup')" class="ml-1 font-semibold text-emerald-300 hover:text-emerald-200">Daftar</button>
+                </p>
+                <p class="mt-6 text-center text-xs leading-relaxed text-slate-500">Akun dan data jurnal Anda dilindungi oleh autentikasi serta kebijakan akses per pengguna.</p>
+            </div>
+        </div>
+    </section>
+
+    <div id="appShell" class="hidden">
+    <!-- TOP NAVIGATION / HEADER -->
+    <header class="bg-cardbg/80 backdrop-blur border-b border-bordercolor sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 w-full lg:w-auto justify-between lg:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            HFM Cent Trading Journal <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">Cent Account</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">HFM Cent • Leverage <span id="leverageSummary">—</span> • Cloud Sync Supabase</p>
+                    </div>
+                </div>
+                <span id="mobileAccountEmail" class="lg:hidden max-w-32 truncate rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-300"></span>
+            </div>
+
+            <!-- Header Action Items & Status -->
+            <div class="flex flex-wrap items-center justify-between lg:justify-end w-full lg:w-auto gap-2.5 text-xs">
+                <!-- Kurs Reference Badge -->
+                <div class="bg-slate-900 border border-bordercolor px-3 py-1.5 rounded-lg flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-slate-400">Kurs:</span>
+                    <span id="exchangeRateBadge" class="font-mono font-semibold text-emerald-400">Kurs IDR belum diatur</span>
+                </div>
+
+                <span id="desktopAccountEmail" class="hidden max-w-52 truncate rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-300 lg:inline-flex"></span>
+                <button id="themeToggleApp" onclick="toggleTheme()" class="rounded-lg border border-bordercolor bg-slate-800/70 px-3 py-1.5 text-slate-200 hover:bg-slate-700" type="button" aria-label="Ubah tema" title="Ubah tema">
+                    <i data-lucide="sun-moon" class="h-4 w-4"></i>
+                </button>
+
+                <button onclick="toggleModal('calculatorModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-bordercolor px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
+                    <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Kalkulator
+                </button>
+
+                <button onclick="switchTab('githubTab')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md shadow-emerald-900/20">
+                    <i data-lucide="code" class="w-4 h-4"></i> Deploy GitHub
+                </button>
+
+                <button onclick="handleSignOut()" class="rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-1.5 font-medium text-rose-300 transition hover:bg-rose-400/20">
+                    <i data-lucide="log-out" class="mr-1 inline h-4 w-4"></i> Keluar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- METRICS & DASHBOARD OVERVIEW CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Deposit Card -->
+            <div class="bg-cardbg border border-bordercolor p-4 rounded-xl shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+                    <span>Deposit Awal</span>
+                    <i data-lucide="arrow-down-left" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono text-white" id="initialBalanceDisplay">—</div>
+                <div class="text-xs font-mono text-slate-400 mt-1" id="initialBalanceIDR">Isi saldo awal di pengaturan akun</div>
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-blue-500/40"></div>
+            </div>
+
+            <!-- Current Balance Card -->
+            <div class="bg-cardbg border border-bordercolor p-4 rounded-xl shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+                    <span>Saldo Saat Ini</span>
+                    <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono text-emerald-400" id="currentBalanceDisplay">—</div>
+                <div class="text-xs font-mono text-slate-400 mt-1" id="currentBalanceIDR">Belum ada data akun</div>
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+            </div>
+
+            <!-- BEP Recovery Gap Card -->
+            <div class="bg-cardbg border border-bordercolor p-4 rounded-xl shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+                    <span>Selisih Balik Modal (BEP)</span>
+                    <i data-lucide="target" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono text-amber-400" id="bepGapDisplay">—</div>
+                <div class="text-xs font-mono text-slate-400 mt-1" id="bepGapIDR">Isi saldo awal untuk melihat BEP</div>
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+            </div>
+
+            <!-- Recovery Progress Card -->
+            <div class="bg-cardbg border border-bordercolor p-4 rounded-xl shadow-sm relative overflow-hidden flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+                        <span>Progres Balik Modal</span>
+                        <span class="font-mono text-emerald-400 font-bold" id="bepPercentage">—</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-2.5 mt-2 overflow-hidden border border-bordercolor">
+                        <div id="bepProgressBar" class="bg-gradient-to-r from-amber-500 to-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-400 flex justify-between mt-2 font-mono">
+                    <span id="bepStartLabel">Modal awal: —</span>
+                    <span class="text-emerald-400 font-semibold" id="bepTargetLabel">Target BEP: —</span>
+                </div>
+            </div>
+        </div>
+
+        <details id="accountSettingsPanel" class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden">
+            <summary class="cursor-pointer list-none p-5 flex items-center justify-between gap-4">
+                <span>
+                    <span class="block text-sm font-bold text-white">Pengaturan akun & parameter kalkulasi</span>
+                    <span class="block mt-1 text-xs text-slate-400">Semua angka diisi sendiri, disimpan privat di Supabase, dan digunakan sebagai parameter rumus akun Anda.</span>
+                </span>
+                <i data-lucide="sliders-horizontal" class="h-5 w-5 shrink-0 text-emerald-400"></i>
+            </summary>
+            <form id="accountSettingsForm" onsubmit="saveAccountSettings(event)" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-5 pt-0 text-xs">
+                <label class="space-y-1">Total deposit awal (USC)
+                    <input type="number" id="settingTotalDeposit" min="0.01" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Saldo awal tracking (USC)
+                    <input type="number" id="settingInitialBalance" min="0" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Kurs acuan USD/IDR
+                    <input type="number" id="settingUsdIdrRate" min="0.000001" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Unit akun Cent per lot
+                    <input type="number" id="settingCentUnits" min="0.000001" step="1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Leverage akun
+                    <input type="number" id="settingLeverage" min="1" step="1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Stop out level (%)
+                    <input type="number" id="settingStopOut" min="0.01" max="100" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Nilai USC per pip / 1 lot
+                    <input type="number" id="settingPipValue" min="0.000001" step="0.000001" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Risiko per trade (maks 3%)
+                    <input type="number" id="settingRiskPercent" min="0.01" max="3" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Batas transaksi harian (maks 2)
+                    <input type="number" id="settingMaxTrades" min="1" max="2" step="1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Batas rugi harian (USC)
+                    <input type="number" id="settingDailyLoss" min="0.01" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Batas drawdown mingguan (%)
+                    <input type="number" id="settingMaxDrawdown" min="0.01" max="100" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Hari trading per bulan
+                    <input type="number" id="settingTradingDays" min="1" step="1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">SL minimum (pips)
+                    <input type="number" id="settingSLMin" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">SL maksimum (pips)
+                    <input type="number" id="settingSLMax" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">TP minimum (pips)
+                    <input type="number" id="settingTPMin" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">TP maksimum (pips)
+                    <input type="number" id="settingTPMax" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Minimum risk:reward
+                    <input type="number" id="settingMinRR" min="1.5" step="0.01" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Pemicu BE minimum (pips)
+                    <input type="number" id="settingBETriggerMin" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Pemicu BE maksimum (pips)
+                    <input type="number" id="settingBETriggerMax" min="0.000001" step="0.1" required class="account-setting-input">
+                </label>
+                <label class="space-y-1">Kunci profit di (pips)
+                    <input type="number" id="settingBELock" min="0" step="0.1" required class="account-setting-input">
+                </label>
+
+                <div class="col-span-2 sm:col-span-3 lg:col-span-4 space-y-3">
+                    <p class="text-slate-400">Konversi memakai USD/IDR ÷ 100. Risiko posisi = SL pips × lot × nilai USC per pip/lot. Margin = lot × unit Cent/lot × harga aset ÷ leverage. Gunakan spesifikasi instrumen broker yang sesuai.</p>
+                    <h4 class="font-semibold text-white">Rencana pertumbuhan (dihitung dari target dan durasi yang Anda isi)</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[640px] text-left">
+                            <thead class="text-slate-400"><tr>
+                                <th class="py-2 pr-2">Fase</th><th class="py-2 px-2">Durasi (bulan)</th>
+                                <th class="py-2 px-2">Target/hari (USC)</th><th class="py-2 px-2">Lot minimum</th>
+                                <th class="py-2 pl-2">Lot maksimum</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-bordercolor">
+                                <tr data-growth-phase="Pemulihan"><td class="py-2 pr-2">Pemulihan</td><td class="px-2"><input data-phase-field="duration" type="number" min="1" step="1" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="dailyTarget" type="number" min="0.01" step="0.01" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="lotMin" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td><td class="pl-2"><input data-phase-field="lotMax" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td></tr>
+                                <tr data-growth-phase="Balik Modal"><td class="py-2 pr-2">Balik Modal</td><td class="px-2"><input data-phase-field="duration" type="number" min="1" step="1" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="dailyTarget" type="number" min="0.01" step="0.01" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="lotMin" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td><td class="pl-2"><input data-phase-field="lotMax" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td></tr>
+                                <tr data-growth-phase="Stabilisasi"><td class="py-2 pr-2">Stabilisasi</td><td class="px-2"><input data-phase-field="duration" type="number" min="1" step="1" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="dailyTarget" type="number" min="0.01" step="0.01" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="lotMin" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td><td class="pl-2"><input data-phase-field="lotMax" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td></tr>
+                                <tr data-growth-phase="Akselerasi"><td class="py-2 pr-2">Akselerasi</td><td class="px-2"><input data-phase-field="duration" type="number" min="1" step="1" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="dailyTarget" type="number" min="0.01" step="0.01" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="lotMin" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td><td class="pl-2"><input data-phase-field="lotMax" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td></tr>
+                                <tr data-growth-phase="Skala Besar"><td class="py-2 pr-2">Skala Besar</td><td class="px-2"><input data-phase-field="duration" type="number" min="1" step="1" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="dailyTarget" type="number" min="0.01" step="0.01" required class="account-setting-input"></td><td class="px-2"><input data-phase-field="lotMin" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td><td class="pl-2"><input data-phase-field="lotMax" type="number" min="0.000001" step="0.01" required class="account-setting-input"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-span-2 sm:col-span-3 lg:col-span-4 flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <p class="max-w-3xl text-slate-400" id="accountSettingsStatus">Isi data awal dan parameter broker Anda. Tidak ada saldo, kurs, lot, atau target simulasi yang dimasukkan otomatis.</p>
+                    <button type="submit" class="rounded-xl bg-emerald-500 px-5 py-2.5 font-semibold text-slate-950 transition hover:bg-emerald-400">Simpan parameter</button>
+                </div>
+            </form>
+        </details>
+
+        <!-- NAVIGATION TABS -->
+        <div class="border-b border-bordercolor flex space-x-2 overflow-x-auto pb-1">
+            <button onclick="switchTab('roadmapTab')" id="btn-roadmapTab" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-2 border-b-2 border-emerald-500 text-emerald-400 bg-cardbg">
+                <i data-lucide="line-chart" class="w-4 h-4"></i> Peta Jalan Pertumbuhan
+            </button>
+            <button onclick="switchTab('sopTab')" id="btn-sopTab" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-cardbg/50">
+                <i data-lucide="check-square" class="w-4 h-4"></i> SOP & Jadwal Sesi (WIB)
+            </button>
+            <button onclick="switchTab('riskTab')" id="btn-riskTab" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-cardbg/50">
+                <i data-lucide="shield-alert" class="w-4 h-4"></i> Risk Management
+            </button>
+            <button onclick="switchTab('journalTab')" id="btn-journalTab" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-cardbg/50">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Jurnal Trading (Cloud)
+            </button>
+            <button onclick="switchTab('githubTab')" id="btn-githubTab" class="tab-btn px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-cardbg/50">
+                <i data-lucide="code" class="w-4 h-4"></i> Setup GitHub & Supabase
+            </button>
+        </div>
+
+        <!-- TAB 1: PETA JALAN PERTUMBUHAN (ROADMAP & CHART) -->
+        <div id="roadmapTab" class="tab-content space-y-6">
+            
+            <!-- Growth Chart Container -->
+            <div class="bg-cardbg border border-bordercolor p-5 rounded-xl">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-emerald-400"></i> Riwayat Saldo Aktual
+                        </h2>
+                        <p class="text-xs text-slate-400">Grafik dihitung dari saldo awal, transaksi deposit/penarikan, dan hasil jurnal Supabase Anda.</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="roadmapSummaryBadge" class="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            Belum ada data akun
+                        </span>
+                    </div>
+                </div>
+                <div class="h-64 sm:h-80 w-full">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-cardbg border border-bordercolor p-5 rounded-xl space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i data-lucide="chart-no-axes-combined" class="w-5 h-5 text-amber-400"></i> Proyeksi 12 Bulan dari Target Anda
+                    </h2>
+                    <p class="text-xs text-slate-400">Rumus per fase: target profit harian × hari trading per bulan × durasi fase. Ini simulasi, bukan prediksi atau jaminan hasil.</p>
+                    <p id="projectionBEPLabel" class="mt-2 text-xs text-amber-300">Simpan data akun dan rencana fase untuk menghitung proyeksi BEP.</p>
+                </div>
+                <div class="h-64 sm:h-80 w-full">
+                    <canvas id="projectionChart"></canvas>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400">
+                            <tr>
+                                <th class="py-2.5 px-3">Fase / Periode</th><th class="px-3">Saldo Awal–Akhir (USC)</th>
+                                <th class="px-3">Lot Rencana</th><th class="px-3">Target/Hari</th>
+                                <th class="px-3">Hari Kerja</th><th class="px-3">Profit Fase</th>
+                                <th class="px-3">Saldo Akhir (USC)</th><th class="px-3">Saldo Akhir (IDR)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectionTbody" class="divide-y divide-bordercolor font-mono">
+                            <tr><td colspan="8" class="p-4 text-center text-slate-500">Isi parameter dan target pertumbuhan untuk membuat proyeksi.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary Phase Table -->
+            <div class="bg-cardbg border border-bordercolor rounded-xl overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-bordercolor bg-slate-900/50">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i> Ringkasan Performa Bulanan Aktual
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">Periode</th>
+                                <th class="py-3 px-4">Jumlah Trade</th>
+                                <th class="py-3 px-4">Win Rate</th>
+                                <th class="py-3 px-4">Profit Kotor</th>
+                                <th class="py-3 px-4">Loss Kotor</th>
+                                <th class="py-3 px-4">Net PnL</th>
+                                <th class="py-3 px-4">Saldo Akhir</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor font-mono" id="monthlySummaryTbody">
+                            <tr><td colspan="7" class="p-4 text-center text-slate-500">Belum ada data jurnal untuk diringkas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Full 12 Months Breakdown Table -->
+            <div class="bg-cardbg border border-bordercolor rounded-xl overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-bordercolor bg-slate-900/50 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i> Pergerakan Saldo, Deposit & Penarikan
+                    </h3>
+                    <span class="text-xs text-slate-400 font-mono">Dihitung dari riwayat akun Anda</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor font-semibold">
+                            <tr>
+                                <th class="py-2.5 px-4">Bulan</th>
+                                <th class="py-2.5 px-4">Saldo Awal (USC)</th>
+                                <th class="py-2.5 px-4">Deposit</th>
+                                <th class="py-2.5 px-4">Penarikan</th>
+                                <th class="py-2.5 px-4">Net PnL</th>
+                                <th class="py-2.5 px-4">Saldo Akhir</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor font-mono" id="monthlyBreakdownTbody">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-500">Belum ada aktivitas akun.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SOP EKSEKUSI HARIAN & JADWAL SESI (WIB) -->
+        <div id="sopTab" class="tab-content hidden space-y-6">
+            
+            <!-- Trading Sessions Table -->
+            <div class="bg-cardbg border border-bordercolor rounded-xl overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-bordercolor bg-slate-900/50">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-emerald-400"></i> Jadwal Sesi Trading & Jam Rawan Volatilitas (Waktu WIB)
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">Sesi Pasar</th>
+                                <th class="py-3 px-4">Jam Operasional (WIB)</th>
+                                <th class="py-3 px-4">Karakter Pergerakan</th>
+                                <th class="py-3 px-4">Rekomendasi Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor">
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="py-3 px-4 font-semibold text-white">Sesi Asia (Tokyo)</td>
+                                <td class="py-3 px-4 font-mono text-slate-300">06.00 – 13.00 WIB</td>
+                                <td class="py-3 px-4 text-slate-400">Pergerakan cenderung tenang / sideways, range sempit.</td>
+                                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Analisa & Mapping TV</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50 transition bg-emerald-950/10">
+                                <td class="py-3 px-4 font-semibold text-emerald-400">Sesi London (Eropa)</td>
+                                <td class="py-3 px-4 font-mono text-emerald-300 font-bold">14.00 – 17.00 WIB</td>
+                                <td class="py-3 px-4 text-slate-300">Volume meningkat, tren teknikal M15 sangat rapi & bersih.</td>
+                                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">🔥 Jam Emas Scalping 1</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50 transition bg-emerald-950/10">
+                                <td class="py-3 px-4 font-semibold text-emerald-400">Overlap London & New York</td>
+                                <td class="py-3 px-4 font-mono text-emerald-300 font-bold">19.00 – 22.00 WIB</td>
+                                <td class="py-3 px-4 text-slate-300">Likuiditas tertinggi! Pergerakan XAUUSDc sangat kencang.</td>
+                                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">🔥 Jam Emas Scalping 2</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50 transition bg-rose-950/20">
+                                <td class="py-3 px-4 font-semibold text-rose-400">High-Impact News Blackout</td>
+                                <td class="py-3 px-4 font-mono text-rose-300">19.30 & 20.30 WIB (Saat News AS)</td>
+                                <td class="py-3 px-4 text-rose-200">Leverage dinamis HFM diturunkan, spread melebar drastis.</td>
+                                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">⛔ DILARANG ENTRY</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50 transition bg-amber-950/20">
+                                <td class="py-3 px-4 font-semibold text-amber-400">Rollover Sesi Harian HFM</td>
+                                <td class="py-3 px-4 font-mono text-amber-300">04.00 – 06.00 WIB</td>
+                                <td class="py-3 px-4 text-slate-300">Pergantian hari server broker, spread melompat lebar.</td>
+                                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">⚠️ Hindari Trade Baru</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Execution Step-by-Step Checklist & Technical Parameter Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Interactive SOP Checklist -->
+                <div class="bg-cardbg border border-bordercolor p-5 rounded-xl space-y-4">
+                    <h3 class="text-sm font-bold text-white flex items-center justify-between border-b border-bordercolor pb-3">
+                        <span class="flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4 text-emerald-400"></i> Checklist Eksekusi TradingView → MT5</span>
+                        <button onclick="resetChecklist()" class="text-[11px] text-slate-400 hover:text-slate-200 underline">Reset Checklist</button>
+                    </h3>
+                    <div class="space-y-2.5 text-xs text-slate-300" id="checklistContainer">
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900/50 border border-bordercolor/60 hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" id="chk1" onchange="toggleChecklistItem('chk1')" class="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-bordercolor">
+                            <span><strong>1. Filter Timeframe M15:</strong> Tentukan tren utama (Up/Down) & tandai area Support/Resistance kunci.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900/50 border border-bordercolor/60 hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" id="chk2" onchange="toggleChecklistItem('chk2')" class="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-bordercolor">
+                            <span><strong>2. Konfirmasi M5:</strong> Tunggu candle rejection / sinyal indikator di area pantulan penting.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900/50 border border-bordercolor/60 hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" id="chk3" onchange="toggleChecklistItem('chk3')" class="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-bordercolor">
+                            <span><strong>3. Trigger Timing M1:</strong> Cari titik entry presisi di M1 tanpa mengejar candle yang sudah terlanjur melesat.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900/50 border border-bordercolor/60 hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" id="chk4" onchange="toggleChecklistItem('chk4')" class="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-bordercolor">
+                            <span><strong>4. Cek Jam Berita (News Calendar):</strong> Pastikan tidak ada berita merah AS dalam 15 menit ke depan.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900/50 border border-bordercolor/60 hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" id="chk5" onchange="toggleChecklistItem('chk5')" class="mt-0.5 rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-bordercolor">
+                            <span><strong>5. Wajib Pasang SL & TP Sebelum/Saat Entry:</strong> Catat nilai SL dan TP sesuai parameter akun; jangan kosongkan.</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Instrument Parameter Reference Grid -->
+                <div class="bg-cardbg border border-bordercolor p-5 rounded-xl space-y-4">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-bordercolor pb-3">
+                        <i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i> Parameter Akun dari Pengaturan Anda
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor">
+                                <tr>
+                                    <th class="py-2 px-3">Parameter</th>
+                                    <th class="py-2 px-3">Nilai akun saat ini</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-bordercolor font-mono" id="instrumentSettingsTbody">
+                                <tr><td colspan="2" class="py-3 px-3 text-slate-500">Simpan pengaturan akun untuk melihat parameter.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 3: RISK MANAGEMENT & ATURAN ANTI-BANGKRUT -->
+        <div id="riskTab" class="tab-content hidden space-y-6">
+            <div class="bg-cardbg border border-bordercolor rounded-xl overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-bordercolor bg-slate-900/50">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Aturan Risiko Berdasarkan Parameter Akun
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">No</th>
+                                <th class="py-3 px-4">Prinsip Utama</th>
+                                <th class="py-3 px-4">Kondisi / Trigger</th>
+                                <th class="py-3 px-4">Tindakan Wajib</th>
+                                <th class="py-3 px-4">Dampak Keamanan Akun</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor" id="riskRulesTbody">
+                            <tr><td colspan="5" class="p-4 text-center text-slate-500">Simpan pengaturan akun untuk melihat batas risiko.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: JURNAL TRADING INTERAKTIF (SUPABASE CLOUD & LOCALSTORAGE) -->
+        <div id="journalTab" class="tab-content hidden space-y-6">
+            <div class="bg-cardbg border border-bordercolor p-5 rounded-xl space-y-4">
+                <h3 class="text-sm font-bold text-white border-b border-bordercolor pb-3">
+                    Deposit dan Penarikan Akun
+                </h3>
+                <form id="cashflowForm" onsubmit="addCashflow(event)" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <label class="space-y-1">Tanggal
+                        <input type="date" id="cashflowDate" required class="account-setting-input">
+                    </label>
+                    <label class="space-y-1">Jenis
+                        <select id="cashflowType" required class="account-setting-input">
+                            <option value="deposit">Deposit</option>
+                            <option value="withdrawal">Penarikan</option>
+                        </select>
+                    </label>
+                    <label class="space-y-1">Jumlah (USC)
+                        <input type="number" id="cashflowAmount" min="0.01" step="0.01" required class="account-setting-input">
+                    </label>
+                    <label class="space-y-1">Catatan
+                        <input type="text" id="cashflowNotes" class="account-setting-input">
+                    </label>
+                    <div class="col-span-2 sm:col-span-4 flex flex-wrap items-center justify-between gap-3">
+                        <span id="cashflowStatus" class="text-slate-400">Deposit dan penarikan dicatat sebagai arus kas; bukan profit/loss trading.</span>
+                        <button type="submit" class="rounded-xl bg-emerald-500 px-5 py-2.5 font-semibold text-slate-950 transition hover:bg-emerald-400">Simpan arus kas</button>
+                    </div>
+                </form>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400">
+                            <tr>
+                                <th class="py-2 px-3">Tanggal</th><th class="py-2 px-3">Jenis</th>
+                                <th class="py-2 px-3">Jumlah (USC)</th><th class="py-2 px-3">Catatan</th>
+                                <th class="py-2 px-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cashflowTbody" class="divide-y divide-bordercolor font-mono">
+                            <tr><td colspan="5" class="p-3 text-center text-slate-500">Belum ada deposit atau penarikan.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Journal Input Form -->
+            <div class="bg-cardbg border border-bordercolor p-5 rounded-xl space-y-4">
+                <h3 class="text-sm font-bold text-white flex items-center justify-between border-b border-bordercolor pb-3">
+                    <span class="flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i> Catat Transaksi Baru</span>
+                    <span class="text-xs font-mono text-emerald-400" id="syncStatusNotice">Akan tersimpan ke Cloud Supabase & Local Storage</span>
+                </h3>
+
+                <form id="tradeForm" onsubmit="addTrade(event)" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Tanggal</label>
+                        <input type="date" id="tDate" required class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Pair</label>
+                        <select id="tPair" class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                            <option value="XAUUSDc">XAUUSDc (Emas)</option>
+                            <option value="EURUSDc">EURUSDc (Forex)</option>
+                            <option value="GBPUSDc">GBPUSDc (Forex)</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Tipe Order</label>
+                        <select id="tType" class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="BUY">BUY</option>
+                            <option value="SELL">SELL</option>
+                            <option value="BUY STOP">BUY STOP</option>
+                            <option value="SELL STOP">SELL STOP</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Ukuran Lot</label>
+                        <input type="number" min="0.000001" step="0.01" id="tLot" required class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Harga Entry (opsional)</label>
+                        <input type="number" min="0" step="any" id="tEntryPrice" class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">SL (pips)</label>
+                        <input type="number" min="0.000001" step="0.1" id="tSLPips" required class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">TP (pips)</label>
+                        <input type="number" min="0.000001" step="0.1" id="tTPPips" required class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Hasil (pips, ±, opsional)</label>
+                        <input type="number" step="0.1" id="tResultPips" class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Hasil aktual (USC, ±)</label>
+                        <input type="number" step="0.01" id="tResultUSC" required class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Status</label>
+                        <select id="tStatus" class="w-full bg-slate-900 border border-bordercolor rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="TP">Take Profit (TP)</option>
+                            <option value="SL">Stop Loss (SL)</option>
+                            <option value="BEP">Break Even (BEP)</option>
+                            <option value="MANUAL">Close Manual</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 sm:col-span-3 lg:col-span-5">
+                        <label class="block text-slate-400 mb-1">Catatan / Evaluasi Brief</label>
+                        <input type="text" id="tNotes" placeholder="Contoh: Entry di rejection M5, berita aman, disiplin SL." class="w-full bg-slate-900 border border-bordercolor rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="col-span-2 sm:col-span-3 lg:col-span-1 flex items-end">
+                        <button type="submit" id="btnSubmitTrade" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Journal Stats & Log Table -->
+            <div class="bg-cardbg border border-bordercolor rounded-xl overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-bordercolor bg-slate-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-4 text-xs font-mono">
+                        <div>Total Trade: <span id="statTotalTrades" class="font-bold text-white">0</span></div>
+                        <div>Win Rate: <span id="statWinRate" class="font-bold text-emerald-400">—</span></div>
+                        <div>Net PnL: <span id="statNetPnL" class="font-bold text-emerald-400">—</span></div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="syncJournal()" class="bg-indigo-900/50 hover:bg-indigo-800/60 text-indigo-300 border border-indigo-700/50 px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Sync Cloud
+                        </button>
+                        <button onclick="migrateLocalToSupabase()" class="bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/50 px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Migrasi Lokal -> Cloud
+                        </button>
+                        <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-bordercolor px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Export CSV
+                        </button>
+                        <button onclick="clearJournal()" class="bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border border-rose-800/40 px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear Log
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="text-[11px] uppercase bg-slate-900/80 text-slate-400 border-b border-bordercolor font-semibold">
+                            <tr>
+                                <th class="py-2.5 px-3">Tanggal</th>
+                                <th class="py-2.5 px-3">Pair</th>
+                                <th class="py-2.5 px-3">Type</th>
+                                <th class="py-2.5 px-3">Lot</th>
+                                <th class="py-2.5 px-3">SL / TP (pips)</th>
+                                <th class="py-2.5 px-3">Hasil (pips)</th>
+                                <th class="py-2.5 px-3">Hasil (USC)</th>
+                                <th class="py-2.5 px-3">Hasil (IDR)</th>
+                                <th class="py-2.5 px-3">Status</th>
+                                <th class="py-2.5 px-3">Catatan</th>
+                                <th class="py-2.5 px-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor font-mono" id="journalTbody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: PANDUAN DEPLOY GITHUB & SETUP SUPABASE -->
+        <div id="githubTab" class="tab-content hidden space-y-6">
+            
+            <div class="bg-cardbg border border-bordercolor p-6 rounded-2xl space-y-5">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 border-b border-bordercolor pb-3">
+                    <i data-lucide="shield-check" class="h-5 w-5 text-emerald-400"></i> Akun dan Privasi Data
+                </h3>
+                <p class="text-sm leading-relaxed text-slate-300">Daftar atau masuk menggunakan email dan password dari layar login. Setelah masuk, jurnal dan checklist tersimpan dengan ID akun Anda; kebijakan RLS membatasi setiap permintaan ke baris milik pengguna tersebut.</p>
+                <ol class="list-decimal space-y-2 pl-5 text-sm text-slate-300">
+                    <li>Project URL dan publishable key Supabase sudah dikonfigurasi untuk aplikasi ini. Publishable key memang terlihat di browser; jangan pernah menggantinya dengan `service_role` key.</li>
+                    <li>Di Supabase, aktifkan <strong>Authentication → Providers → Email</strong> dan masukkan URL website ke Site URL serta Redirect URLs pada <strong>Authentication → URL Configuration</strong>.</li>
+                    <li>Daftar melalui aplikasi menggunakan email pemilik data lama. Jika konfirmasi email aktif, buka tautan verifikasi sebelum masuk.</li>
+                    <li>Backup database, ganti `YOUR_REGISTERED_EMAIL` di <a href="./supabase-migration.sql" download class="font-semibold text-emerald-300 underline">supabase-migration.sql</a> dengan email tersebut, lalu jalankan seluruh query terbaru di SQL Editor.</li>
+                    <li>Masuk kembali dan isi pengaturan akun serta rencana fase. Setelah disimpan, saldo/proyeksi baru tampil dari nilai Supabase yang Anda masukkan.</li>
+                    <li>Pengguna berikutnya dapat mendaftar; pengaturan, jurnal, dan arus kas mereka terpisah per akun.</li>
+                </ol>
+                <div class="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-relaxed text-amber-100">
+                    Semua baris lama tanpa pemilik dipindahkan ke satu akun yang ditentukan. Pilih email pemilik yang benar dan backup database terlebih dahulu. Jangan pernah memakai `service_role` key di browser.
+                </div>
+            </div>
+
+            <div class="bg-cardbg border border-bordercolor p-6 rounded-2xl space-y-5">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 border-b border-bordercolor pb-3">
+                    <i data-lucide="settings-2" class="h-5 w-5 text-indigo-400"></i> Konfigurasi Sekali dan Hosting
+                </h3>
+                <p class="text-sm leading-relaxed text-slate-300">URL project dan publishable key Supabase sudah diatur pada konfigurasi aplikasi, bukan dimasukkan pengguna lewat formulir. Publishable key memang tersedia di sisi browser untuk aplikasi statis; keamanan data berasal dari autentikasi dan RLS, bukan merahasiakan key ini.</p>
+                <ol class="list-decimal space-y-2 pl-5 text-sm text-slate-300">
+                    <li>Project URL dan publishable key sudah terpasang. Pastikan Anda tidak menggantinya dengan `service_role` key.</li>
+                    <li>Di Supabase, aktifkan provider Email dan atur Site URL serta Redirect URLs pada Authentication → URL Configuration.</li>
+                    <li>Commit file `index.html`, `README.md`, dan `supabase-migration.sql` ke repository.</li>
+                    <li>Aktifkan GitHub Pages lewat <strong>Settings → Pages</strong> dengan branch `main` dan folder root.</li>
+                </ol>
+                <a href="./supabase-migration.sql" download class="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20">
+                    <i data-lucide="download" class="h-4 w-4"></i> Unduh SQL migrasi
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LIVE CALCULATOR MODAL -->
+    <div id="calculatorModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 space-y-5 shadow-2xl relative">
+            <button onclick="toggleModal('calculatorModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h3 class="text-base font-bold text-white flex items-center gap-2 border-b border-bordercolor pb-3">
+                <i data-lucide="calculator" class="w-5 h-5 text-emerald-400"></i> Kalkulator Konversi & Risiko Posisi
+            </h3>
+
+            <!-- Converter Section -->
+            <div class="space-y-3 bg-slate-900 p-4 rounded-xl border border-bordercolor">
+                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider">1. Konverter USC <-> IDR</h4>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Jumlah USC</label>
+                        <input type="number" id="calcUSC" min="0" step="0.01" oninput="convertUSCtoIDR()" class="w-full bg-slate-800 border border-bordercolor rounded-lg px-3 py-1.5 font-mono text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Hasil IDR (Rp)</label>
+                        <input type="text" id="calcIDR" readonly class="w-full bg-slate-800 border border-bordercolor rounded-lg px-3 py-1.5 font-mono text-emerald-400 font-bold">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk & Margin Section -->
+            <div class="space-y-3 bg-slate-900 p-4 rounded-xl border border-bordercolor">
+                <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">2. Simulasi Lot & Risiko (pakai parameter akun)</h4>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Ukuran Lot Cent</label>
+                        <input type="number" min="0" step="0.01" id="calcLot" oninput="calculateLotRisk()" class="w-full bg-slate-800 border border-bordercolor rounded-lg px-3 py-1.5 font-mono text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Jarak SL (Pips)</label>
+                        <input type="number" min="0" step="0.1" id="calcSLPips" oninput="calculateLotRisk()" class="w-full bg-slate-800 border border-bordercolor rounded-lg px-3 py-1.5 font-mono text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-slate-400 mb-1">Harga aset untuk estimasi margin</label>
+                        <input type="number" min="0" step="any" id="calcAssetPrice" oninput="calculateLotRisk()" class="w-full bg-slate-800 border border-bordercolor rounded-lg px-3 py-1.5 font-mono text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+                <p class="text-[11px] leading-relaxed text-slate-500">Masukkan harga aset dan spesifikasi akun yang benar. Estimasi mengikuti contract units, leverage, dan stop-out level pada pengaturan; bukan data harga live.</p>
+                <div class="pt-2 border-t border-bordercolor/60 grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div class="text-slate-400">Risiko pada SL: <span id="resRiskUSC" class="text-rose-400 font-bold">—</span></div>
+                    <div class="text-slate-400">Risiko dalam IDR: <span id="resRiskIDR" class="text-rose-400 font-bold">—</span></div>
+                    <div class="text-slate-400">Risiko / saldo: <span id="resRiskPercent" class="text-rose-400 font-bold">—</span></div>
+                    <div class="text-slate-400">Estimasi margin: <span id="resMarginUSC" class="text-emerald-400 font-bold">—</span></div>
+                    <div class="text-slate-400">Lot sesuai batas risiko: <span id="resRecommendedLot" class="text-emerald-400 font-bold">—</span></div>
+                    <div class="text-slate-400">Kapasitas loss teoritis: <span id="resSafePips" class="text-amber-400 font-bold">—</span></div>
+                </div>
+            </div>
+
+            <div class="text-right">
+                <button onclick="toggleModal('calculatorModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-1.5 rounded-lg text-xs font-medium border border-bordercolor">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-cardbg border-t border-bordercolor py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 space-y-1">
+            <p>HFM Cent Account Trading Journal • Supabase per-user data • Local pending-sync fallback</p>
+            <p class="text-[11px] text-slate-400">Disiplin SL/TP & Risk Management adalah kunci utama pertahanan modal.</p>
+        </div>
+    </footer>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC WITH SUPABASE AUTHENTICATION -->
+    <script>
+        const SUPABASE_URL = 'https://kugxcwvvqazxwffexyxi.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_lxJxQYjxcq-lArQMKmFLSQ_auvNBeiV';
+
+        // Global State
+        let journalData = [];
+        let supabaseClient = null;
+        let currentUser = null;
+        let loadedUserId = null;
+        let authMode = 'signin';
+        let growthChart = null;
+        let projectionChart = null;
+        let accountSettings = null;
+        let accountCashflows = [];
+
+        function getUserStorageKey(key) {
+            if (!currentUser) throw new Error('Silakan masuk terlebih dahulu.');
+            return `${key}:${currentUser.id}`;
+        }
+
+        function toLocalDateInputValue(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Initialize App on DOM Ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            const today = toLocalDateInputValue();
+            document.getElementById('tDate').value = today;
+            document.getElementById('cashflowDate').value = today;
+            document.getElementById('initialBalanceDisplay').innerHTML = '—';
+            renderDashboard();
+            renderJournal();
+            updateThemeControls();
+            await initializeSupabaseAuth();
+        });
+
+        async function initializeSupabaseAuth() {
+            if (!window.supabase) {
+                showAuthMessage('Supabase client tidak termuat. Periksa koneksi internet dan CDN.', 'error');
+                return;
+            }
+
+            if (
+                !SUPABASE_URL.startsWith('https://') ||
+                SUPABASE_URL.includes('YOUR_PROJECT_ID') ||
+                SUPABASE_PUBLISHABLE_KEY.includes('YOUR_SUPABASE')
+            ) {
+                showAuthMessage('Konfigurasi belum diisi. Masukkan Project URL dan anon/publishable key di konstanta konfigurasi pada index.html.', 'error');
+                return;
+            }
+
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: true
+                    }
+                });
+
+                supabaseClient.auth.onAuthStateChange((_event, session) => {
+                    window.setTimeout(() => {
+                        applyAuthSession(session).catch(error => {
+                            console.error('Auth session initialization failed:', error);
+                            showAuthMessage(`Gagal memuat akun: ${error.message}`, 'error');
+                        });
+                    }, 0);
+                });
+
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (error) throw error;
+                await applyAuthSession(data.session);
+            } catch (error) {
+                console.error('Supabase initialization failed:', error);
+                showAuthMessage(`Koneksi Supabase gagal: ${error.message}`, 'error');
+            }
+        }
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            const isSignup = mode === 'signup';
+            document.getElementById('authHeading').textContent = isSignup ? 'Buat akun baru' : 'Masuk ke akun';
+            document.getElementById('authSubheading').textContent = isSignup
+                ? 'Daftar untuk menyimpan jurnal trading secara privat.'
+                : 'Lanjutkan ke dashboard trading personal Anda.';
+            document.getElementById('authConfirmWrap').classList.toggle('hidden', !isSignup);
+            document.getElementById('authConfirmPassword').required = isSignup;
+            document.getElementById('authPassword').autocomplete = isSignup ? 'new-password' : 'current-password';
+            document.getElementById('authSubmit').innerHTML = isSignup
+                ? 'Daftar <i data-lucide="user-round-plus" class="h-4 w-4"></i>'
+                : 'Masuk <i data-lucide="arrow-right" class="h-4 w-4"></i>';
+            document.getElementById('authSwitchPrompt').textContent = isSignup ? 'Sudah punya akun?' : 'Belum punya akun?';
+            const switchButton = document.getElementById('authSwitchButton');
+            switchButton.textContent = isSignup ? 'Masuk' : 'Daftar';
+            switchButton.setAttribute('onclick', `setAuthMode('${isSignup ? 'signin' : 'signup'}')`);
+            document.getElementById('authStatus').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function showAuthMessage(message, type) {
+            const element = document.getElementById('authStatus');
+            element.textContent = message;
+            element.className = `rounded-xl border px-4 py-3 text-sm ${
+                type === 'error'
+                    ? 'border-rose-400/30 bg-rose-400/10 text-rose-200'
+                    : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+            }`;
+        }
+
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            if (!supabaseClient) {
+                showAuthMessage('Supabase belum siap. Periksa konfigurasi Project URL dan anon key di index.html.', 'error');
+                return;
+            }
+
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const button = document.getElementById('authSubmit');
+            if (authMode === 'signup' && password !== document.getElementById('authConfirmPassword').value) {
+                showAuthMessage('Konfirmasi password tidak sama.', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = authMode === 'signup' ? 'Membuat akun...' : 'Memeriksa akun...';
+            try {
+                if (authMode === 'signup') {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email,
+                        password,
+                        options: { emailRedirectTo: window.location.href.split('#')[0] }
+                    });
+                    if (error) throw error;
+                    if (data.session) {
+                        await applyAuthSession(data.session);
+                    } else {
+                        showAuthMessage('Akun berhasil dibuat. Periksa email untuk konfirmasi, lalu masuk.', 'success');
+                    }
+                } else {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    await applyAuthSession(data.session);
+                }
+            } catch (error) {
+                showAuthMessage(`Autentikasi gagal: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = authMode === 'signup'
+                    ? 'Daftar <i data-lucide="user-round-plus" class="h-4 w-4"></i>'
+                    : 'Masuk <i data-lucide="arrow-right" class="h-4 w-4"></i>';
+                lucide.createIcons();
+            }
+        }
+
+        async function handleSignOut() {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                setSyncStatus(`Gagal keluar: ${error.message}`, 'error');
+                return;
+            }
+            await applyAuthSession(null);
+        }
+
+        async function applyAuthSession(session) {
+            const nextUser = session?.user || null;
+            if (!nextUser) {
+                currentUser = null;
+                loadedUserId = null;
+                journalData = [];
+                accountSettings = null;
+                accountCashflows = [];
+                document.getElementById('appShell').classList.add('hidden');
+                document.getElementById('authGate').classList.remove('hidden');
+                document.getElementById('authForm').reset();
+                renderJournal();
+                renderCashflows();
+                setAuthMode('signin');
+                return;
+            }
+
+            const userChanged = currentUser?.id !== nextUser.id;
+            if (userChanged) {
+                journalData = [];
+                accountSettings = null;
+                accountCashflows = [];
+            }
+            currentUser = nextUser;
+            document.getElementById('authGate').classList.add('hidden');
+            document.getElementById('appShell').classList.remove('hidden');
+            document.getElementById('desktopAccountEmail').textContent = nextUser.email || 'Akun Anda';
+            document.getElementById('mobileAccountEmail').textContent = nextUser.email || 'Akun';
+            applyUserTheme(nextUser);
+
+            if (!growthChart) initGrowthChart();
+            if (!projectionChart) initProjectionChart();
+            if (userChanged || loadedUserId !== nextUser.id) {
+                loadedUserId = nextUser.id;
+                try {
+                    if (userChanged) {
+                        renderJournal();
+                        renderCashflows();
+                    }
+                    journalData = loadJournalLocal();
+                    loadChecklistLocal();
+                    await fetchAccountSettings();
+                    await fetchAccountCashflows();
+                    await fetchFromSupabaseCloud();
+                    await fetchChecklistFromCloud();
+                    renderCashflows();
+                    setSyncStatus('Tersinkron dengan akun Supabase Anda.', 'success');
+                } catch (error) {
+                    console.error('Account data load failed:', error);
+                    setSyncStatus(`Gagal memuat data akun: ${error.message}. Periksa migrasi SQL dan kebijakan RLS.`, 'error');
+                }
+            }
+            lucide.createIcons();
+        }
+
+        function applyUserTheme(user) {
+            const metadataTheme = user.user_metadata?.ui_theme;
+            const localTheme = localStorage.getItem(`hfm_theme:${user.id}`);
+            const theme = metadataTheme === 'light' || metadataTheme === 'dark'
+                ? metadataTheme
+                : localTheme || 'dark';
+            setTheme(theme, false);
+        }
+
+        function setTheme(theme, persist = true) {
+            const isDark = theme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            localStorage.setItem('hfm_theme', theme);
+            if (currentUser) localStorage.setItem(`hfm_theme:${currentUser.id}`, theme);
+            updateThemeControls();
+
+            if (persist && currentUser && supabaseClient) {
+                supabaseClient.auth.updateUser({ data: { ui_theme: theme } }).then(({ error }) => {
+                    if (error) {
+                        console.error('Theme preference sync failed:', error);
+                        setSyncStatus(`Tema tersimpan di browser, tetapi gagal disinkronkan ke akun: ${error.message}`, 'error');
+                    }
+                }).catch(error => {
+                    console.error('Theme preference sync failed:', error);
+                    setSyncStatus(`Tema tersimpan di browser, tetapi gagal disinkronkan ke akun: ${error.message}`, 'error');
+                });
+            }
+        }
+
+        function toggleTheme() {
+            setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+        }
+
+        function updateThemeControls() {
+            const isDark = document.documentElement.classList.contains('dark');
+            ['themeToggleAuth', 'themeToggleApp'].forEach(id => {
+                const button = document.getElementById(id);
+                if (!button) return;
+                button.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}" class="h-4 w-4"></i>`;
+                button.title = isDark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap';
+                button.setAttribute('aria-label', button.title);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function setSyncStatus(message, type = 'info') {
+            const element = document.getElementById('syncStatusNotice');
+            if (!element) return;
+            element.textContent = message;
+            element.className = `text-xs font-mono ${
+                type === 'error' ? 'text-rose-400' : type === 'success' ? 'text-emerald-400' : 'text-slate-400'
+            }`;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
+        function parseOptionalNumber(value) {
+            if (value === '' || value === null || value === undefined) return null;
+            const number = Number(value);
+            return Number.isFinite(number) ? number : null;
+        }
+
+        function formatNumber(value, digits = 2) {
+            return Number(value).toLocaleString('id-ID', {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            });
+        }
+
+        function getExchangeRate() {
+            const usdIdrRate = Number(accountSettings?.usd_idr_rate);
+            return Number.isFinite(usdIdrRate) && usdIdrRate > 0 ? usdIdrRate / 100 : null;
+        }
+
+        function formatIDR(amount) {
+            const rate = getExchangeRate();
+            if (rate === null) return '—';
+            const sign = amount < 0 ? '-' : '';
+            return `${sign}Rp${Math.round(Math.abs(amount) * rate).toLocaleString('id-ID')}`;
+        }
+
+        async function fetchAccountSettings() {
+            if (!currentUser || !supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('trading_account_settings')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+            if (error) throw error;
+
+            accountSettings = data;
+            renderAccountSettings();
+            renderDashboard();
+            convertUSCtoIDR();
+            calculateLotRisk();
+            updateJournalPipHints();
+        }
+
+        function renderAccountSettings() {
+            const form = document.getElementById('accountSettingsForm');
+            const panel = document.getElementById('accountSettingsPanel');
+            const fieldMap = {
+                settingTotalDeposit: 'total_deposit_usc',
+                settingInitialBalance: 'initial_balance_usc',
+                settingUsdIdrRate: 'usd_idr_rate',
+                settingCentUnits: 'cent_units_per_lot',
+                settingStopOut: 'stop_out_level_percent',
+                settingRiskPercent: 'risk_percent',
+                settingPipValue: 'pip_value_usc_per_lot',
+                settingLeverage: 'leverage',
+                settingSLMin: 'sl_min_pips',
+                settingSLMax: 'sl_max_pips',
+                settingTPMin: 'tp_min_pips',
+                settingTPMax: 'tp_max_pips',
+                settingMinRR: 'minimum_reward_risk_ratio',
+                settingMaxTrades: 'max_trades_per_day',
+                settingDailyLoss: 'daily_loss_limit_usc',
+                settingMaxDrawdown: 'max_drawdown_percent',
+                settingBETriggerMin: 'be_trigger_min_pips',
+                settingBETriggerMax: 'be_trigger_max_pips',
+                settingBELock: 'be_lock_pips',
+                settingTradingDays: 'trading_days_per_month'
+            };
+
+            Object.entries(fieldMap).forEach(([id, key]) => {
+                document.getElementById(id).value = accountSettings?.[key] ?? '';
+            });
+            document.querySelectorAll('[data-growth-phase]').forEach((row, index) => {
+                const phase = accountSettings?.growth_plan?.[index];
+                row.querySelector('[data-phase-field="duration"]').value = phase?.duration_months ?? '';
+                row.querySelector('[data-phase-field="dailyTarget"]').value = phase?.target_daily_profit_usc ?? '';
+                row.querySelector('[data-phase-field="lotMin"]').value = phase?.lot_min ?? '';
+                row.querySelector('[data-phase-field="lotMax"]').value = phase?.lot_max ?? '';
+            });
+
+            form.dataset.saved = accountSettings ? 'true' : 'false';
+            panel.open = !accountSettings;
+            document.getElementById('accountSettingsStatus').textContent = accountSettings
+                ? 'Parameter akun tersimpan di Supabase. Sesuaikan kembali jika spesifikasi instrumen berubah.'
+                : 'Belum ada parameter tersimpan. Sesuaikan nilai dengan spesifikasi broker/instrumen aktif Anda.';
+            renderAccountSpecificSettings();
+            renderRiskRules();
+        }
+
+        async function saveAccountSettings(event) {
+            event.preventDefault();
+            if (!currentUser || !supabaseClient) {
+                setSyncStatus('Sesi login tidak tersedia. Masuk kembali untuk menyimpan parameter.', 'error');
+                return;
+            }
+
+            const payload = {
+                user_id: currentUser.id,
+                total_deposit_usc: parseOptionalNumber(document.getElementById('settingTotalDeposit').value),
+                initial_balance_usc: parseOptionalNumber(document.getElementById('settingInitialBalance').value),
+                usd_idr_rate: parseOptionalNumber(document.getElementById('settingUsdIdrRate').value),
+                cent_units_per_lot: parseOptionalNumber(document.getElementById('settingCentUnits').value),
+                stop_out_level_percent: parseOptionalNumber(document.getElementById('settingStopOut').value),
+                risk_percent: parseOptionalNumber(document.getElementById('settingRiskPercent').value),
+                pip_value_usc_per_lot: parseOptionalNumber(document.getElementById('settingPipValue').value),
+                leverage: parseOptionalNumber(document.getElementById('settingLeverage').value),
+                sl_min_pips: parseOptionalNumber(document.getElementById('settingSLMin').value),
+                sl_max_pips: parseOptionalNumber(document.getElementById('settingSLMax').value),
+                tp_min_pips: parseOptionalNumber(document.getElementById('settingTPMin').value),
+                tp_max_pips: parseOptionalNumber(document.getElementById('settingTPMax').value),
+                minimum_reward_risk_ratio: parseOptionalNumber(document.getElementById('settingMinRR').value),
+                max_trades_per_day: parseOptionalNumber(document.getElementById('settingMaxTrades').value),
+                daily_loss_limit_usc: parseOptionalNumber(document.getElementById('settingDailyLoss').value),
+                max_drawdown_percent: parseOptionalNumber(document.getElementById('settingMaxDrawdown').value),
+                be_trigger_min_pips: parseOptionalNumber(document.getElementById('settingBETriggerMin').value),
+                be_trigger_max_pips: parseOptionalNumber(document.getElementById('settingBETriggerMax').value),
+                be_lock_pips: parseOptionalNumber(document.getElementById('settingBELock').value),
+                trading_days_per_month: parseOptionalNumber(document.getElementById('settingTradingDays').value),
+                growth_plan: [...document.querySelectorAll('[data-growth-phase]')].map(row => ({
+                    name: row.dataset.growthPhase,
+                    duration_months: parseOptionalNumber(row.querySelector('[data-phase-field="duration"]').value),
+                    target_daily_profit_usc: parseOptionalNumber(row.querySelector('[data-phase-field="dailyTarget"]').value),
+                    lot_min: parseOptionalNumber(row.querySelector('[data-phase-field="lotMin"]').value),
+                    lot_max: parseOptionalNumber(row.querySelector('[data-phase-field="lotMax"]').value)
+                })),
+                updated_at: new Date().toISOString()
+            };
+
+            const invalidGrowthPlan = payload.growth_plan.length !== 5 || payload.growth_plan.some(phase =>
+                Object.entries(phase).some(([key, value]) => key !== 'name' && value === null) ||
+                !Number.isInteger(phase.duration_months) ||
+                phase.duration_months < 1 ||
+                phase.target_daily_profit_usc <= 0 ||
+                phase.lot_min <= 0 ||
+                phase.lot_max < phase.lot_min
+            );
+            const projectedMonths = payload.growth_plan.reduce((total, phase) => total + (phase.duration_months || 0), 0);
+            const invalidSettings = Object.entries(payload).some(([key, value]) =>
+                !['user_id', 'updated_at', 'growth_plan'].includes(key) && value === null
+            ) ||
+                payload.total_deposit_usc <= 0 ||
+                payload.initial_balance_usc < 0 ||
+                payload.usd_idr_rate <= 0 ||
+                payload.cent_units_per_lot <= 0 ||
+                payload.stop_out_level_percent <= 0 ||
+                payload.stop_out_level_percent > 100 ||
+                payload.risk_percent > 3 ||
+                payload.risk_percent <= 0 ||
+                payload.pip_value_usc_per_lot <= 0 ||
+                payload.leverage <= 0 ||
+                payload.max_trades_per_day > 2 ||
+                payload.max_trades_per_day < 1 ||
+                payload.daily_loss_limit_usc <= 0 ||
+                payload.max_drawdown_percent <= 0 ||
+                payload.max_drawdown_percent > 100 ||
+                payload.trading_days_per_month < 1 ||
+                payload.sl_max_pips < payload.sl_min_pips ||
+                payload.tp_max_pips < payload.tp_min_pips ||
+                payload.minimum_reward_risk_ratio < 1.5 ||
+                payload.be_trigger_max_pips < payload.be_trigger_min_pips ||
+                projectedMonths !== 12;
+            if (invalidSettings || invalidGrowthPlan) {
+                document.getElementById('accountSettingsStatus').textContent = 'Lengkapi semua parameter dengan angka yang valid.';
+                return;
+            }
+
+            const button = event.submitter;
+            if (button) button.disabled = true;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('trading_account_settings')
+                    .upsert(payload, { onConflict: 'user_id' })
+                    .select()
+                    .single();
+                if (error) throw error;
+
+                accountSettings = data;
+                renderAccountSettings();
+                renderDashboard();
+                convertUSCtoIDR();
+                calculateLotRisk();
+                updateJournalPipHints();
+                document.getElementById('accountSettingsPanel').open = false;
+                document.getElementById('accountSettingsStatus').textContent = 'Pengaturan berhasil disimpan ke Supabase.';
+                updateJournalPipHints();
+                setSyncStatus('Parameter akun tersimpan di Supabase.', 'success');
+            } catch (error) {
+                console.error('Account settings save failed:', error);
+                document.getElementById('accountSettingsStatus').textContent = `Gagal menyimpan pengaturan: ${error.message}`;
+                setSyncStatus(`Pengaturan akun gagal disimpan: ${error.message}`, 'error');
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function fetchAccountCashflows() {
+            if (!currentUser || !supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('account_cashflows')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('flow_date', { ascending: false })
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+
+            accountCashflows = data || [];
+            renderCashflows();
+        }
+
+        function renderCashflows() {
+            const tbody = document.getElementById('cashflowTbody');
+            if (!tbody) return;
+            if (accountCashflows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500">Belum ada deposit atau penarikan.</td></tr>';
+                renderDashboard();
+                return;
+            }
+
+            tbody.innerHTML = accountCashflows.map(flow => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="py-2 px-3">${escapeHtml(flow.flow_date)}</td>
+                    <td class="py-2 px-3">${flow.flow_type === 'deposit' ? 'Deposit' : 'Penarikan'}</td>
+                    <td class="py-2 px-3">${formatNumber(flow.amount_usc)} USC</td>
+                    <td class="py-2 px-3">${escapeHtml(flow.notes || '—')}</td>
+                    <td class="py-2 px-3 text-right"><button data-delete-cashflow="${escapeHtml(flow.id)}" class="text-rose-400 hover:text-rose-300" aria-label="Hapus arus kas">Hapus</button></td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('[data-delete-cashflow]').forEach(button => {
+                button.addEventListener('click', () => deleteCashflow(button.dataset.deleteCashflow));
+            });
+            renderDashboard();
+        }
+
+        async function addCashflow(event) {
+            event.preventDefault();
+            if (!currentUser || !supabaseClient || !accountSettings) {
+                setSyncStatus('Simpan pengaturan akun terlebih dahulu sebelum mencatat deposit atau penarikan.', 'error');
+                return;
+            }
+
+            const amount = parseOptionalNumber(document.getElementById('cashflowAmount').value);
+            if (amount === null || amount <= 0) return;
+            const button = event.submitter;
+            if (button) button.disabled = true;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('account_cashflows')
+                    .insert([{
+                        user_id: currentUser.id,
+                        flow_date: document.getElementById('cashflowDate').value,
+                        flow_type: document.getElementById('cashflowType').value,
+                        amount_usc: amount,
+                        notes: document.getElementById('cashflowNotes').value.trim() || null
+                    }])
+                    .select()
+                    .single();
+                if (error) throw error;
+                accountCashflows.unshift(data);
+                document.getElementById('cashflowForm').reset();
+                document.getElementById('cashflowDate').value = toLocalDateInputValue();
+                renderCashflows();
+                setSyncStatus('Deposit/penarikan berhasil disimpan ke Supabase.', 'success');
+            } catch (error) {
+                console.error('Cashflow save failed:', error);
+                document.getElementById('cashflowStatus').textContent = `Gagal menyimpan arus kas: ${error.message}`;
+                setSyncStatus(`Arus kas gagal disimpan: ${error.message}`, 'error');
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function deleteCashflow(id) {
+            if (!confirm('Hapus catatan deposit/penarikan ini?')) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('account_cashflows')
+                    .delete()
+                    .eq('id', id)
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+                accountCashflows = accountCashflows.filter(flow => flow.id !== id);
+                renderCashflows();
+                setSyncStatus('Catatan arus kas dihapus.', 'success');
+            } catch (error) {
+                console.error('Cashflow delete failed:', error);
+                setSyncStatus(`Gagal menghapus arus kas: ${error.message}`, 'error');
+            }
+        }
+
+        // --- USER-SCOPED SUPABASE DATA OPERATIONS ---
+        async function fetchFromSupabaseCloud() {
+            if (!currentUser || !supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('trading_journal')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('trade_date', { ascending: false })
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+
+            const cloudTrades = (data || []).map(item => ({
+                id: item.id,
+                date: item.trade_date,
+                pair: item.pair,
+                type: item.direction,
+                lot: parseFloat(item.lot),
+                entryPrice: parseOptionalNumber(item.entry_price),
+                slPips: parseOptionalNumber(item.sl_pips),
+                tpPips: parseOptionalNumber(item.tp_pips),
+                resultPips: parseOptionalNumber(item.result_pips),
+                resultUSC: parseFloat(item.result_usc),
+                resultIDR: getExchangeRate() === null ? null : Math.round(parseFloat(item.result_usc) * getExchangeRate()),
+                status: item.status,
+                notes: item.notes || '-',
+                pendingSync: false
+            }));
+            const cloudIds = new Set(cloudTrades.map(item => item.id));
+            const pendingLocalTrades = journalData.filter(item =>
+                (item.pendingSync || typeof item.id === 'number') && !cloudIds.has(item.id)
+            );
+            journalData = [...pendingLocalTrades, ...cloudTrades];
+            saveAndRenderJournal();
+        }
+
+        async function syncJournal() {
+            try {
+                await fetchFromSupabaseCloud();
+                setSyncStatus('Jurnal berhasil disinkronkan.', 'success');
+            } catch (error) {
+                console.error('Journal sync failed:', error);
+                setSyncStatus(`Sinkronisasi gagal: ${error.message}`, 'error');
+            }
+        }
+
+        async function fetchChecklistFromCloud() {
+            if (!currentUser || !supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('sop_checklist')
+                .select('*')
+                .eq('user_id', currentUser.id);
+            if (error) throw error;
+
+            for (let i = 1; i <= 5; i++) {
+                const element = document.getElementById(`chk${i}`);
+                if (element) element.checked = false;
+            }
+            (data || []).forEach(item => {
+                const element = document.getElementById(item.id);
+                if (element) element.checked = item.is_checked;
+            });
+            saveChecklistLocal();
+        }
+
+        async function toggleChecklistItem(id) {
+            const el = document.getElementById(id);
+            const isChecked = el ? el.checked : false;
+            saveChecklistLocal();
+            if (!currentUser || !supabaseClient) return;
+            const { error } = await supabaseClient
+                .from('sop_checklist')
+                .upsert({
+                    user_id: currentUser.id,
+                    id,
+                    is_checked: isChecked,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,id' });
+            if (error) {
+                setSyncStatus(`Checklist gagal disimpan: ${error.message}`, 'error');
+            }
+        }
+
+        async function migrateLocalToSupabase() {
+            if (!currentUser || !supabaseClient) {
+                alert('Silakan masuk terlebih dahulu.');
+                return;
+            }
+
+            journalData = journalData.map(item => (
+                item.pendingSync && typeof item.id === 'number'
+                    ? { ...item, id: crypto.randomUUID(), pendingSync: true }
+                    : item
+            ));
+            saveAndRenderJournal();
+            const pendingLocalTrades = journalData.filter(item => item.pendingSync || typeof item.id === 'number');
+            if (pendingLocalTrades.length === 0) {
+                alert('Tidak ada jurnal lokal yang menunggu sinkronisasi.');
+                return;
+            }
+
+            if (!confirm(`Sinkronkan ${pendingLocalTrades.length} jurnal lokal ke akun Supabase ini?`)) return;
+
+            try {
+                const recordsToInsert = pendingLocalTrades.map(t => ({
+                    id: t.id,
+                    user_id: currentUser.id,
+                    trade_date: t.date,
+                    pair: t.pair,
+                    direction: t.type,
+                    lot: t.lot,
+                    entry_price: t.entryPrice,
+                    sl_pips: t.slPips,
+                    tp_pips: t.tpPips,
+                    result_pips: t.resultPips,
+                    result_usc: t.resultUSC,
+                    status: t.status,
+                    notes: t.notes
+                }));
+
+                const { error } = await supabaseClient
+                    .from('trading_journal')
+                    .insert(recordsToInsert);
+                if (error) throw error;
+                const migratedIds = new Set(pendingLocalTrades.map(item => item.id));
+                journalData = journalData.filter(item => !migratedIds.has(item.id));
+                await fetchFromSupabaseCloud();
+                setSyncStatus('Sinkronisasi jurnal lokal berhasil.', 'success');
+            } catch (error) {
+                console.error('Local journal sync failed:', error);
+                setSyncStatus(`Sinkronisasi gagal: ${error.message}`, 'error');
+            }
+        }
+
+        // --- LOCALSTORAGE & UI RENDERERS ---
+        function saveChecklistLocal() {
+            if (!currentUser) return;
+            const state = {};
+            for (let i = 1; i <= 5; i++) {
+                state[`chk${i}`] = document.getElementById(`chk${i}`)?.checked || false;
+            }
+            localStorage.setItem(getUserStorageKey('hfm_sop_checklist'), JSON.stringify(state));
+        }
+
+        function loadChecklistLocal() {
+            if (!currentUser) return;
+            const scopedKey = getUserStorageKey('hfm_sop_checklist');
+            let saved = JSON.parse(localStorage.getItem(scopedKey) || 'null');
+            const legacyOwnerKey = 'hfm_legacy_checklist_owner';
+            const legacyChecklist = localStorage.getItem('hfm_sop_checklist');
+            if (!saved && legacyChecklist && !localStorage.getItem(legacyOwnerKey)) {
+                saved = JSON.parse(legacyChecklist);
+                localStorage.setItem(legacyOwnerKey, currentUser.id);
+                localStorage.setItem(scopedKey, JSON.stringify(saved));
+                localStorage.removeItem('hfm_sop_checklist');
+            }
+            for (let i = 1; i <= 5; i++) {
+                const element = document.getElementById(`chk${i}`);
+                if (element) element.checked = false;
+            }
+            if (saved) {
+                for (let i = 1; i <= 5; i++) {
+                    if (document.getElementById(`chk${i}`)) {
+                        document.getElementById(`chk${i}`).checked = !!saved[`chk${i}`];
+                    }
+                }
+            }
+        }
+
+        function resetChecklist() {
+            for (let i = 1; i <= 5; i++) {
+                if (document.getElementById(`chk${i}`)) {
+                    document.getElementById(`chk${i}`).checked = false;
+                    toggleChecklistItem(`chk${i}`);
+                }
+            }
+        }
+
+        // Trade Handlers
+        async function addTrade(e) {
+            e.preventDefault();
+            if (!currentUser || !supabaseClient) {
+                setSyncStatus('Sesi login tidak tersedia. Masuk kembali untuk menyimpan jurnal.', 'error');
+                return;
+            }
+            if (!accountSettings) {
+                setSyncStatus('Isi dan simpan pengaturan akun sebelum mencatat trade.', 'error');
+                return;
+            }
+            const date = document.getElementById('tDate').value;
+            const pair = document.getElementById('tPair').value;
+            const type = document.getElementById('tType').value;
+            const lot = parseFloat(document.getElementById('tLot').value);
+            const resultUSC = parseFloat(document.getElementById('tResultUSC').value);
+            const entryPrice = parseOptionalNumber(document.getElementById('tEntryPrice').value);
+            const slPips = parseOptionalNumber(document.getElementById('tSLPips').value);
+            const tpPips = parseOptionalNumber(document.getElementById('tTPPips').value);
+            const resultPips = parseOptionalNumber(document.getElementById('tResultPips').value);
+            const status = document.getElementById('tStatus').value;
+            const notes = document.getElementById('tNotes').value || '-';
+
+            if (!Number.isFinite(lot) || lot <= 0 || !Number.isFinite(resultUSC) ||
+                slPips === null || slPips <= 0 || tpPips === null || tpPips <= 0) {
+                setSyncStatus('Lot, SL, TP, dan hasil USC harus diisi dengan angka yang valid.', 'error');
+                return;
+            }
+            const warnings = [];
+            if (slPips < Number(accountSettings.sl_min_pips) || slPips > Number(accountSettings.sl_max_pips) ||
+                tpPips < Number(accountSettings.tp_min_pips) || tpPips > Number(accountSettings.tp_max_pips)) {
+                warnings.push('SL atau TP berada di luar rentang parameter akun');
+            }
+            if (tpPips / slPips < Number(accountSettings.minimum_reward_risk_ratio)) {
+                warnings.push(`rasio TP/SL di bawah 1:${formatNumber(accountSettings.minimum_reward_risk_ratio, 2)}`);
+            }
+            const totals = getAccountTotals();
+            const estimatedRisk = slPips * lot * Number(accountSettings.pip_value_usc_per_lot);
+            const riskLimit = Math.max(0, totals.currentBalance) * Number(accountSettings.risk_percent) / 100;
+            if (estimatedRisk > riskLimit) {
+                warnings.push(`estimasi risiko ${formatNumber(estimatedRisk)} USC melampaui batas ${formatNumber(riskLimit)} USC`);
+            }
+            const today = toLocalDateInputValue();
+            const todaysTrades = journalData.filter(trade => trade.date === today);
+            const todaysPnL = todaysTrades.reduce((total, trade) => total + Number(trade.resultUSC || 0), 0);
+            if (todaysTrades.length >= Number(accountSettings.max_trades_per_day)) {
+                warnings.push('batas jumlah transaksi harian sudah tercapai');
+            }
+            if (todaysPnL - estimatedRisk <= -Number(accountSettings.daily_loss_limit_usc)) {
+                warnings.push('estimasi rugi menyentuh batas rugi harian');
+            }
+            if (warnings.length > 0 && !confirm(`Catatan trade ini melanggar/menyentuh aturan akun: ${warnings.join('; ')}. Simpan sebagai catatan historis?`)) {
+                setSyncStatus('Penyimpanan trade dibatalkan setelah peringatan risiko.', 'info');
+                return;
+            }
+
+            const newTrade = {
+                id: crypto.randomUUID(),
+                date,
+                pair,
+                type,
+                lot,
+                entryPrice,
+                slPips,
+                tpPips,
+                resultPips,
+                resultUSC,
+                resultIDR: getExchangeRate() === null ? null : Math.round(resultUSC * getExchangeRate()),
+                status,
+                notes,
+                pendingSync: true
+            };
+
+            journalData.unshift(newTrade);
+            saveAndRenderJournal();
+            try {
+                const { data, error } = await supabaseClient
+                    .from('trading_journal')
+                    .insert([{
+                        id: newTrade.id,
+                        user_id: currentUser.id,
+                        trade_date: date,
+                        pair,
+                        direction: type,
+                        lot,
+                        entry_price: entryPrice,
+                        sl_pips: slPips,
+                        tp_pips: tpPips,
+                        result_pips: resultPips,
+                        result_usc: resultUSC,
+                        status,
+                        notes
+                    }])
+                    .select()
+                    .single();
+                if (error) throw error;
+
+                journalData = journalData.filter(item => item.id !== newTrade.id);
+                journalData.unshift({
+                    id: data.id,
+                    date: data.trade_date,
+                    pair: data.pair,
+                    type: data.direction,
+                    lot: parseFloat(data.lot),
+                    entryPrice: parseOptionalNumber(data.entry_price),
+                    slPips: parseOptionalNumber(data.sl_pips),
+                    tpPips: parseOptionalNumber(data.tp_pips),
+                    resultPips: parseOptionalNumber(data.result_pips),
+                    resultUSC: parseFloat(data.result_usc),
+                    resultIDR: getExchangeRate() === null ? null : Math.round(parseFloat(data.result_usc) * getExchangeRate()),
+                    status: data.status,
+                    notes: data.notes || '-',
+                    pendingSync: false
+                });
+                saveAndRenderJournal();
+                setSyncStatus('Jurnal berhasil disimpan ke akun Anda.', 'success');
+            } catch (error) {
+                console.error('Trade save failed:', error);
+                setSyncStatus(`Gagal sinkron; jurnal disimpan sementara di browser akun ini: ${error.message}`, 'error');
+            }
+
+            document.getElementById('tResultUSC').value = '';
+            document.getElementById('tResultPips').value = '';
+            document.getElementById('tEntryPrice').value = '';
+            document.getElementById('tSLPips').value = '';
+            document.getElementById('tTPPips').value = '';
+            document.getElementById('tNotes').value = '';
+        }
+
+        async function deleteTrade(id) {
+            if (!confirm('Hapus catatan transaksi ini?')) return;
+            const trade = journalData.find(item => item.id === id);
+            if (!trade) return;
+            try {
+                if (!trade.pendingSync && typeof id === 'string') {
+                    const { error } = await supabaseClient
+                        .from('trading_journal')
+                        .delete()
+                        .eq('id', id)
+                        .eq('user_id', currentUser.id);
+                    if (error) throw error;
+                }
+                journalData = journalData.filter(item => item.id !== id);
+                saveAndRenderJournal();
+                setSyncStatus('Catatan transaksi dihapus.', 'success');
+            } catch (error) {
+                console.error('Trade delete failed:', error);
+                setSyncStatus(`Gagal menghapus jurnal: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearJournal() {
+            if (!confirm('Apakah Anda yakin ingin menghapus semua catatan jurnal trading di akun ini?')) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('trading_journal')
+                    .delete()
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+                journalData = [];
+                saveAndRenderJournal();
+                setSyncStatus('Semua jurnal akun ini telah dihapus.', 'success');
+            } catch (error) {
+                console.error('Journal clear failed:', error);
+                setSyncStatus(`Gagal menghapus jurnal: ${error.message}`, 'error');
+            }
+        }
+
+        function saveAndRenderJournal() {
+            if (!currentUser) return;
+            localStorage.setItem(getUserStorageKey('hfm_journal_trades'), JSON.stringify(journalData));
+            renderJournal();
+        }
+
+        function loadJournalLocal() {
+            const scopedKey = getUserStorageKey('hfm_journal_trades');
+            let saved = localStorage.getItem(scopedKey);
+            const legacyOwnerKey = 'hfm_legacy_journal_owner';
+            const legacyJournal = localStorage.getItem('hfm_journal_trades');
+            if (!saved && legacyJournal && !localStorage.getItem(legacyOwnerKey)) {
+                JSON.parse(legacyJournal);
+                localStorage.setItem(legacyOwnerKey, currentUser.id);
+                localStorage.setItem(scopedKey, legacyJournal);
+                localStorage.removeItem('hfm_journal_trades');
+                saved = legacyJournal;
+            }
+            const parsed = saved ? JSON.parse(saved) : [];
+            if (!Array.isArray(parsed)) throw new Error('Format jurnal lokal tidak valid.');
+            return parsed.map(item => ({ ...item, pendingSync: item.pendingSync || typeof item.id === 'number' }));
+        }
+
+        function renderJournal() {
+            const tbody = document.getElementById('journalTbody');
+            const totalTrades = journalData.length;
+            const wins = journalData.filter(trade => trade.resultUSC > 0).length;
+            const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+            const netPnLUSC = journalData.reduce((total, trade) => total + Number(trade.resultUSC || 0), 0);
+            const netPnLIDR = getExchangeRate() === null ? null : Math.round(netPnLUSC * getExchangeRate());
+
+            document.getElementById('statTotalTrades').textContent = totalTrades.toLocaleString('id-ID');
+            document.getElementById('statWinRate').textContent = `${formatNumber(winRate, 1)}%`;
+            document.getElementById('statNetPnL').className = `font-bold ${netPnLUSC >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('statNetPnL').textContent =
+                `${netPnLUSC >= 0 ? '+' : ''}${formatNumber(netPnLUSC)} USC (${netPnLIDR === null ? '—' : formatIDR(netPnLUSC)})`;
+
+            if (journalData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="py-4 text-center text-slate-500 font-sans">Belum ada catatan transaksi. Tambahkan transaksi pertama di atas!</td></tr>';
+            } else {
+                tbody.innerHTML = journalData.map(trade => {
+                    const isWin = trade.resultUSC > 0;
+                    const tradeType = String(trade.type || '');
+                    const safeId = escapeHtml(trade.id);
+                    const slTp = [trade.slPips, trade.tpPips].map(value =>
+                        value === null || value === undefined ? '—' : formatNumber(value, 1)
+                    ).join(' / ');
+                    return `
+                        <tr class="hover:bg-slate-800/50 transition">
+                            <td class="py-2.5 px-3 font-sans text-slate-300">${escapeHtml(trade.date)}</td>
+                            <td class="py-2.5 px-3 text-white font-bold">${escapeHtml(trade.pair)}</td>
+                            <td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${tradeType.includes('BUY') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">${escapeHtml(tradeType)}</span></td>
+                            <td class="py-2.5 px-3 text-slate-300">${formatNumber(trade.lot)}</td>
+                            <td class="py-2.5 px-3 text-slate-300">${slTp}</td>
+                            <td class="py-2.5 px-3 text-slate-300">${trade.resultPips === null || trade.resultPips === undefined ? '—' : formatNumber(trade.resultPips, 1)}</td>
+                            <td class="py-2.5 px-3 font-bold ${isWin ? 'text-emerald-400' : trade.resultUSC < 0 ? 'text-rose-400' : 'text-slate-300'}">${isWin ? '+' : ''}${formatNumber(trade.resultUSC)} USC</td>
+                            <td class="py-2.5 px-3 ${isWin ? 'text-emerald-400' : trade.resultUSC < 0 ? 'text-rose-400' : 'text-slate-300'}">${trade.resultIDR === null ? '—' : `${isWin ? '+' : ''}${formatIDR(trade.resultUSC)}`}</td>
+                            <td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded text-[10px] font-sans ${trade.status === 'TP' ? 'bg-emerald-500/20 text-emerald-300' : trade.status === 'SL' ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-300'}">${escapeHtml(trade.status)}</span></td>
+                            <td class="py-2.5 px-3 font-sans text-slate-400 truncate max-w-xs" title="${escapeHtml(trade.notes)}">${escapeHtml(trade.notes)}</td>
+                            <td class="py-2.5 px-3 text-right">
+                                <button data-delete-trade="${safeId}" class="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-rose-950/40" aria-label="Hapus transaksi">
+                                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tbody.querySelectorAll('[data-delete-trade]').forEach(button => {
+                    button.addEventListener('click', () => deleteTrade(button.dataset.deleteTrade));
+                });
+            }
+
+            renderDashboard();
+            renderActualMonthlyPerformance();
+            calculateLotRisk();
+            lucide.createIcons();
+        }
+
+        // Tab Switching & Utilities
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-emerald-500', 'text-emerald-400', 'bg-cardbg');
+                btn.classList.add('border-transparent', 'text-slate-400');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('border-emerald-500', 'text-emerald-400', 'bg-cardbg');
+                activeBtn.classList.remove('border-transparent', 'text-slate-400');
+            }
+        }
+
+        function toggleModal(modalId) {
+            document.getElementById(modalId).classList.toggle('hidden');
+        }
+
+        function getAccountTotals() {
+            if (!accountSettings) return null;
+            const tradePnL = journalData.reduce((total, trade) => total + Number(trade.resultUSC || 0), 0);
+            const deposits = accountCashflows
+                .filter(flow => flow.flow_type === 'deposit')
+                .reduce((total, flow) => total + Number(flow.amount_usc), 0);
+            const withdrawals = accountCashflows
+                .filter(flow => flow.flow_type === 'withdrawal')
+                .reduce((total, flow) => total + Number(flow.amount_usc), 0);
+            const totalDeposited = Number(accountSettings.total_deposit_usc) + deposits;
+            const currentBalance = Number(accountSettings.initial_balance_usc) + deposits - withdrawals + tradePnL;
+            const bepGap = Math.max(0, totalDeposited - currentBalance);
+            const bepProgress = totalDeposited > 0
+                ? Math.min(100, (currentBalance / totalDeposited) * 100)
+                : 0;
+            return { tradePnL, deposits, withdrawals, totalDeposited, currentBalance, bepGap, bepProgress };
+        }
+
+        function getAccountEvents() {
+            return [
+                ...journalData.map(trade => ({
+                    date: trade.date,
+                    type: 'trade',
+                    amount: Number(trade.resultUSC || 0)
+                })),
+                ...accountCashflows.map(flow => ({
+                    date: flow.flow_date,
+                    type: flow.flow_type,
+                    amount: Number(flow.amount_usc)
+                }))
+            ].filter(event => event.date).sort((left, right) => left.date.localeCompare(right.date));
+        }
+
+        function renderDashboard() {
+            const ids = ['initialBalanceDisplay', 'initialBalanceIDR', 'currentBalanceDisplay', 'currentBalanceIDR',
+                'bepGapDisplay', 'bepGapIDR', 'bepPercentage', 'bepStartLabel', 'bepTargetLabel', 'roadmapSummaryBadge'];
+            if (!accountSettings) {
+                document.getElementById('initialBalanceDisplay').textContent = '—';
+                document.getElementById('initialBalanceIDR').textContent = 'Belum ada data akun';
+                document.getElementById('currentBalanceDisplay').textContent = '—';
+                document.getElementById('currentBalanceIDR').textContent = 'Belum ada data akun';
+                document.getElementById('bepGapDisplay').textContent = '—';
+                document.getElementById('bepGapIDR').textContent = 'Isi parameter akun untuk menghitung BEP';
+                document.getElementById('bepPercentage').textContent = '—';
+                document.getElementById('bepProgressBar').style.width = '0%';
+                document.getElementById('bepStartLabel').textContent = 'Saldo awal: —';
+                document.getElementById('bepTargetLabel').textContent = 'Target BEP: —';
+                document.getElementById('roadmapSummaryBadge').textContent = 'Simpan parameter akun untuk mulai';
+                document.getElementById('leverageSummary').textContent = '—';
+                document.getElementById('exchangeRateBadge').textContent = 'Kurs IDR belum diatur';
+                ids.forEach(id => document.getElementById(id)?.classList.add('is-empty'));
+                renderRiskRules();
+                renderGrowthProjection();
+                return;
+            }
+
+            ids.forEach(id => document.getElementById(id)?.classList.remove('is-empty'));
+            const totals = getAccountTotals();
+            const rate = getExchangeRate();
+            const initialBalance = Number(accountSettings.initial_balance_usc);
+            const daysToBep = totals.bepGap > 0 && accountSettings.growth_plan?.[0]?.target_daily_profit_usc > 0
+                ? Math.ceil(totals.bepGap / Number(accountSettings.growth_plan[0].target_daily_profit_usc))
+                : 0;
+            const progressWidth = Math.max(0, Math.min(100, totals.bepProgress));
+
+            document.getElementById('initialBalanceDisplay').innerHTML =
+                `${formatNumber(accountSettings.total_deposit_usc)} <span class="text-xs text-slate-400">USC</span>`;
+            document.getElementById('initialBalanceIDR').textContent =
+                `${formatIDR(Number(accountSettings.total_deposit_usc))} total deposit awal`;
+            document.getElementById('currentBalanceDisplay').innerHTML =
+                `${formatNumber(totals.currentBalance)} <span class="text-xs text-slate-400">USC</span>`;
+            document.getElementById('currentBalanceIDR').textContent = formatIDR(totals.currentBalance);
+            document.getElementById('bepGapDisplay').innerHTML =
+                `${formatNumber(totals.bepGap)} <span class="text-xs text-slate-400">USC</span>`;
+            document.getElementById('bepGapIDR').textContent = totals.bepGap > 0
+                ? `${formatIDR(totals.bepGap)} menuju BEP${daysToBep > 0 ? ` · estimasi ${daysToBep} hari kerja` : ''}`
+                : 'Target modal tercapai';
+            document.getElementById('bepPercentage').textContent = `${formatNumber(totals.bepProgress)}%`;
+            document.getElementById('bepProgressBar').style.width = `${progressWidth}%`;
+            document.getElementById('bepStartLabel').textContent = `Saldo awal tracking: ${formatNumber(initialBalance)} USC`;
+            document.getElementById('bepTargetLabel').textContent = `Total deposit: ${formatNumber(totals.totalDeposited)} USC`;
+            document.getElementById('roadmapSummaryBadge').textContent =
+                `Saldo aktual ${formatNumber(totals.currentBalance)} USC${rate === null ? '' : ` · ${formatIDR(totals.currentBalance)}`}`;
+            document.getElementById('leverageSummary').textContent = `1:${formatNumber(accountSettings.leverage, 0)}`;
+            document.getElementById('exchangeRateBadge').textContent =
+                rate === null ? 'Kurs IDR belum diatur' : `1 USC = Rp${formatNumber(rate, 4)}`;
+            renderRiskRules();
+            renderGrowthProjection();
+        }
+
+        function getMonthlyAccountRows() {
+            if (!accountSettings) return [];
+            const months = new Map();
+            getAccountEvents().forEach(event => {
+                const monthKey = event.date.slice(0, 7);
+                if (!months.has(monthKey)) {
+                    months.set(monthKey, {
+                        key: monthKey,
+                        trades: 0,
+                        wins: 0,
+                        grossProfit: 0,
+                        grossLoss: 0,
+                        pnl: 0,
+                        deposits: 0,
+                        withdrawals: 0
+                    });
+                }
+                const month = months.get(monthKey);
+                if (event.type === 'trade') {
+                    month.trades += 1;
+                    month.pnl += event.amount;
+                    if (event.amount > 0) {
+                        month.wins += 1;
+                        month.grossProfit += event.amount;
+                    } else if (event.amount < 0) {
+                        month.grossLoss += Math.abs(event.amount);
+                    }
+                } else if (event.type === 'deposit') {
+                    month.deposits += event.amount;
+                } else if (event.type === 'withdrawal') {
+                    month.withdrawals += event.amount;
+                }
+            });
+
+            let balance = Number(accountSettings.initial_balance_usc);
+            return [...months.values()].sort((left, right) => left.key.localeCompare(right.key)).map(month => {
+                month.openingBalance = balance;
+                balance += month.deposits - month.withdrawals + month.pnl;
+                month.closingBalance = balance;
+                month.winRate = month.trades > 0 ? (month.wins / month.trades) * 100 : 0;
+                return month;
+            });
+        }
+
+        function renderActualMonthlyPerformance() {
+            const summaryBody = document.getElementById('monthlySummaryTbody');
+            const breakdownBody = document.getElementById('monthlyBreakdownTbody');
+            const rows = getMonthlyAccountRows();
+            const noRows = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Belum ada data jurnal untuk diringkas.</td></tr>';
+
+            if (summaryBody) {
+                summaryBody.innerHTML = rows.length ? rows.slice().reverse().map(row => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="py-3 px-4">${escapeHtml(new Date(`${row.key}-01T00:00:00`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }))}</td>
+                        <td class="py-3 px-4">${row.trades}</td>
+                        <td class="py-3 px-4">${formatNumber(row.winRate, 1)}%</td>
+                        <td class="py-3 px-4 text-emerald-400">${formatNumber(row.grossProfit)} USC</td>
+                        <td class="py-3 px-4 text-rose-400">-${formatNumber(row.grossLoss)} USC</td>
+                        <td class="py-3 px-4 ${row.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${row.pnl >= 0 ? '+' : ''}${formatNumber(row.pnl)} USC</td>
+                        <td class="py-3 px-4">${formatNumber(row.closingBalance)} USC</td>
+                    </tr>
+                `).join('') : noRows;
+            }
+
+            if (breakdownBody) {
+                breakdownBody.innerHTML = rows.length ? rows.slice().reverse().map(row => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="py-2.5 px-4">${escapeHtml(new Date(`${row.key}-01T00:00:00`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }))}</td>
+                        <td class="py-2.5 px-4">${formatNumber(row.openingBalance)} USC</td>
+                        <td class="py-2.5 px-4 text-emerald-400">${formatNumber(row.deposits)} USC</td>
+                        <td class="py-2.5 px-4 text-amber-400">${formatNumber(row.withdrawals)} USC</td>
+                        <td class="py-2.5 px-4 ${row.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${row.pnl >= 0 ? '+' : ''}${formatNumber(row.pnl)} USC</td>
+                        <td class="py-2.5 px-4 font-bold">${formatNumber(row.closingBalance)} USC</td>
+                    </tr>
+                `).join('') : noRows.replace('colspan="7"', 'colspan="6"');
+            }
+
+            if (!growthChart) return;
+            const labels = accountSettings
+                ? ['Saldo awal', ...rows.map(row => new Date(`${row.key}-01T00:00:00`).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }))]
+                : [];
+            const balanceSeries = accountSettings
+                ? [Number(accountSettings.initial_balance_usc), ...rows.map(row => row.closingBalance)]
+                : [];
+            const depositSeries = accountSettings
+                ? [Number(accountSettings.total_deposit_usc), ...rows.map(row =>
+                    Number(accountSettings.total_deposit_usc) +
+                    accountCashflows.filter(flow => flow.flow_type === 'deposit' && flow.flow_date.slice(0, 7) <= row.key)
+                        .reduce((total, flow) => total + Number(flow.amount_usc), 0)
+                )]
+                : [];
+            growthChart.data.labels = labels;
+            growthChart.data.datasets[0].data = balanceSeries;
+            growthChart.data.datasets[1].data = depositSeries;
+            growthChart.update();
+        }
+
+        function getGrowthProjectionRows() {
+            if (!accountSettings || !Array.isArray(accountSettings.growth_plan)) return [];
+            let month = 1;
+            let balance = getAccountTotals().currentBalance;
+            return accountSettings.growth_plan.map(phase => {
+                const duration = Number(phase.duration_months);
+                const targetPerDay = Number(phase.target_daily_profit_usc);
+                const workingDays = Number(accountSettings.trading_days_per_month);
+                const openingBalance = balance;
+                const phaseProfit = targetPerDay * workingDays * duration;
+                balance += phaseProfit;
+                const firstMonth = month;
+                month += duration;
+                return {
+                    name: phase.name,
+                    firstMonth,
+                    lastMonth: month - 1,
+                    openingBalance,
+                    closingBalance: balance,
+                    lotMin: Number(phase.lot_min),
+                    lotMax: Number(phase.lot_max),
+                    targetPerDay,
+                    workingDays: workingDays * duration,
+                    phaseProfit
+                };
+            });
+        }
+
+        function renderGrowthProjection() {
+            const tbody = document.getElementById('projectionTbody');
+            const label = document.getElementById('projectionBEPLabel');
+            if (!tbody || !label) return;
+            const plan = accountSettings?.growth_plan;
+            if (!accountSettings || !Array.isArray(plan) || plan.length !== 5) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Isi data akun dan target tiap fase untuk membuat proyeksi.</td></tr>';
+                label.textContent = 'Simpan data akun dan rencana fase untuk menghitung proyeksi BEP.';
+                if (projectionChart) {
+                    projectionChart.data.labels = [];
+                    projectionChart.data.datasets[0].data = [];
+                    projectionChart.update();
+                }
+                return;
+            }
+
+            const phases = getGrowthProjectionRows();
+            const totalMonths = phases.reduce((total, phase) => total + phase.lastMonth - phase.firstMonth + 1, 0);
+            if (totalMonths !== 12) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-amber-300">Durasi semua fase harus berjumlah 12 bulan.</td></tr>';
+                label.textContent = 'Periksa durasi fase: jumlah seluruh durasi harus 12 bulan.';
+                if (projectionChart) {
+                    projectionChart.data.labels = [];
+                    projectionChart.data.datasets[0].data = [];
+                    projectionChart.update();
+                }
+                return;
+            }
+
+            tbody.innerHTML = phases.map(phase => {
+                const monthLabel = phase.firstMonth === phase.lastMonth
+                    ? `Bulan ${phase.firstMonth}`
+                    : `Bulan ${phase.firstMonth}–${phase.lastMonth}`;
+                return `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="py-2.5 px-3">${escapeHtml(phase.name)}<span class="block text-slate-500">${monthLabel}</span></td>
+                        <td class="px-3">${formatNumber(phase.openingBalance)} → ${formatNumber(phase.closingBalance)} USC</td>
+                        <td class="px-3">${formatNumber(phase.lotMin, 2)}–${formatNumber(phase.lotMax, 2)}</td>
+                        <td class="px-3">${formatNumber(phase.targetPerDay)} USC</td>
+                        <td class="px-3">${phase.workingDays}</td>
+                        <td class="px-3 text-emerald-400">+${formatNumber(phase.phaseProfit)} USC</td>
+                        <td class="px-3 font-bold">${formatNumber(phase.closingBalance)} USC</td>
+                        <td class="px-3">${formatIDR(phase.closingBalance)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totals = getAccountTotals();
+            let balance = totals.currentBalance;
+            let projectedBepMonth = totals.bepGap <= 0 ? 0 : null;
+            let monthNumber = 0;
+            const labels = ['Sekarang'];
+            const data = [balance];
+            phases.forEach(phase => {
+                const targetPerMonth = phase.targetPerDay * Number(accountSettings.trading_days_per_month);
+                const duration = phase.lastMonth - phase.firstMonth + 1;
+                for (let month = 0; month < duration; month += 1) {
+                    monthNumber += 1;
+                    balance += targetPerMonth;
+                    labels.push(`B${monthNumber}`);
+                    data.push(balance);
+                    if (projectedBepMonth === null && balance >= totals.totalDeposited) {
+                        projectedBepMonth = monthNumber;
+                    }
+                }
+            });
+            const daysToBep = totals.bepGap > 0
+                ? Math.ceil(totals.bepGap / Number(plan[0].target_daily_profit_usc))
+                : 0;
+            label.textContent = projectedBepMonth === 0
+                ? 'BEP sudah tercapai berdasarkan saldo dan total deposit saat ini.'
+                : projectedBepMonth === null
+                    ? `BEP belum tercapai dalam rencana 12 bulan ini · estimasi ${daysToBep} hari kerja pada target fase pertama.`
+                    : `Estimasi BEP bulan ke-${projectedBepMonth} · ${daysToBep} hari kerja jika memakai target fase pertama.`;
+
+            if (projectionChart) {
+                projectionChart.data.labels = labels;
+                projectionChart.data.datasets[0].data = data;
+                projectionChart.update();
+            }
+        }
+
+        function initProjectionChart() {
+            const ctx = document.getElementById('projectionChart').getContext('2d');
+            projectionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Proyeksi saldo (USC)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 750, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${formatNumber(Number(context.raw))} USC (${formatIDR(Number(context.raw))})`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(148, 163, 184, 0.16)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(148, 163, 184, 0.16)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+            renderGrowthProjection();
+        }
+
+        function renderAccountSpecificSettings() {
+            const tbody = document.getElementById('instrumentSettingsTbody');
+            if (!tbody) return;
+            if (!accountSettings) {
+                tbody.innerHTML = '<tr><td colspan="2" class="py-3 px-3 text-slate-500">Simpan pengaturan akun untuk melihat parameter.</td></tr>';
+                return;
+            }
+
+            const settings = accountSettings;
+            const rows = [
+                ['Ukuran 1 lot akun Cent', `${formatNumber(settings.cent_units_per_lot, 0)} unit`],
+                ['Leverage', `1:${formatNumber(settings.leverage, 0)}`],
+                ['Stop out', `${formatNumber(settings.stop_out_level_percent)}%`],
+                ['Kurs acuan', `Rp${formatNumber(Number(settings.usd_idr_rate) / 100, 4)} per USC (USD/IDR ÷ 100)`],
+                ['Nilai pip per 1 lot', `${formatNumber(settings.pip_value_usc_per_lot)} USC/pip`],
+                ['Risiko maksimum per trade', `${formatNumber(settings.risk_percent)}%`],
+                ['Batas rugi harian', `${formatNumber(settings.daily_loss_limit_usc)} USC`],
+                ['Hari kerja trading per bulan', `${settings.trading_days_per_month} hari`],
+                ['Stop loss', `${formatNumber(settings.sl_min_pips, 1)}–${formatNumber(settings.sl_max_pips, 1)} pips`],
+                ['Take profit', `${formatNumber(settings.tp_min_pips, 1)}–${formatNumber(settings.tp_max_pips, 1)} pips`],
+                ['Minimum risk:reward', `1:${formatNumber(settings.minimum_reward_risk_ratio)}`],
+                ['Pemicu BE / kunci profit', `${formatNumber(settings.be_trigger_min_pips, 1)}–${formatNumber(settings.be_trigger_max_pips, 1)} / +${formatNumber(settings.be_lock_pips, 1)} pips`]
+            ];
+            tbody.innerHTML = rows.map(([label, value]) => `
+                <tr><td class="py-2 px-3 text-slate-400">${escapeHtml(label)}</td><td class="py-2 px-3">${escapeHtml(value)}</td></tr>
+            `).join('');
+        }
+
+        function getCurrentWeeklyDrawdownPercent() {
+            if (!accountSettings) return null;
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setHours(0, 0, 0, 0);
+            weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+            const weekStartDate = toLocalDateInputValue(weekStart);
+            const events = getAccountEvents();
+            let balance = Number(accountSettings.initial_balance_usc);
+            events.filter(event => event.date < weekStartDate).forEach(event => {
+                balance += event.type === 'trade' ? event.amount : event.type === 'deposit' ? event.amount : -event.amount;
+            });
+            let peak = balance;
+            events.filter(event => event.date >= weekStartDate).forEach(event => {
+                balance += event.type === 'trade' ? event.amount : event.type === 'deposit' ? event.amount : -event.amount;
+                peak = Math.max(peak, balance);
+            });
+            return peak > 0 ? Math.max(0, ((peak - balance) / peak) * 100) : 0;
+        }
+
+        function renderRiskRules() {
+            const tbody = document.getElementById('riskRulesTbody');
+            if (!tbody) return;
+            if (!accountSettings) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Simpan pengaturan akun untuk menghitung batas risiko.</td></tr>';
+                return;
+            }
+
+            const totals = getAccountTotals();
+            const today = toLocalDateInputValue();
+            const todaysTrades = journalData.filter(trade => trade.date === today);
+            const todayPnL = todaysTrades.reduce((total, trade) => total + Number(trade.resultUSC || 0), 0);
+            const weeklyDrawdown = getCurrentWeeklyDrawdownPercent();
+            const riskAmount = Math.max(0, totals.currentBalance) * Number(accountSettings.risk_percent) / 100;
+            const maxLot = accountSettings.sl_min_pips > 0 && accountSettings.pip_value_usc_per_lot > 0
+                ? riskAmount / (Number(accountSettings.sl_min_pips) * Number(accountSettings.pip_value_usc_per_lot))
+                : 0;
+            const dailyLimitReached = todayPnL <= -Number(accountSettings.daily_loss_limit_usc);
+            const drawdownReached = weeklyDrawdown >= Number(accountSettings.max_drawdown_percent);
+            const rules = [
+                ['Batas risiko per trade', `${formatNumber(accountSettings.risk_percent)}% saldo (${formatNumber(riskAmount)} USC)`, `Dengan SL minimum ${formatNumber(accountSettings.sl_min_pips, 1)} pips, lot hasil rumus maksimal sekitar ${formatNumber(maxLot, 3)}.`, 'Batas nominal dihitung dari saldo aktual dan nilai pip akun.'],
+                ['Batas transaksi harian', `${todaysTrades.length}/${accountSettings.max_trades_per_day} transaksi hari ini`, `Net PnL hari ini ${formatNumber(todayPnL)} USC dari batas rugi ${formatNumber(accountSettings.daily_loss_limit_usc)} USC.`, todaysTrades.length >= accountSettings.max_trades_per_day ? 'Batas trade tercapai; berhenti sampai hari berikutnya.' : 'Hanya catatan trade tertutup yang dihitung.'],
+                ['Proteksi drawdown mingguan', `${formatNumber(weeklyDrawdown)}% / ${formatNumber(accountSettings.max_drawdown_percent)}%`, 'Drawdown dihitung dari saldo tertinggi minggu berjalan dibanding saldo terbaru.', drawdownReached ? 'Batas terlampaui; kurangi risiko/lot dan evaluasi sebelum lanjut.' : 'Belum melewati batas yang Anda tetapkan.'],
+                ['Stop loss, take profit & BEP+', `SL ${formatNumber(accountSettings.sl_min_pips, 1)}–${formatNumber(accountSettings.sl_max_pips, 1)} · TP ${formatNumber(accountSettings.tp_min_pips, 1)}–${formatNumber(accountSettings.tp_max_pips, 1)} pips`, `Minimum R:R 1:${formatNumber(accountSettings.minimum_reward_risk_ratio, 2)}. BEP+: pindahkan SL ke +${formatNumber(accountSettings.be_lock_pips, 1)} pips setelah trigger ${formatNumber(accountSettings.be_trigger_min_pips, 1)}–${formatNumber(accountSettings.be_trigger_max_pips, 1)} pips.`, 'Aturan referensi; tidak mengirim atau mengubah order broker.'],
+                ['Satu posisi aktif', 'Hindari layering / posisi kembar.', 'Jurnal mencatat posisi tertutup dan tidak dapat membaca posisi aktif dari MetaTrader.', 'Pastikan status posisi aktif langsung di platform broker.']
+            ];
+            tbody.innerHTML = rules.map((rule, index) => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="py-3 px-4 font-mono text-emerald-400">${String(index + 1).padStart(2, '0')}</td>
+                    <td class="py-3 px-4 font-semibold text-white">${escapeHtml(rule[0])}</td>
+                    <td class="py-3 px-4 text-slate-300">${escapeHtml(rule[1])}</td>
+                    <td class="py-3 px-4 text-slate-300">${escapeHtml(rule[2])}</td>
+                    <td class="py-3 px-4 ${((index === 1 && dailyLimitReached) || (index === 2 && drawdownReached)) ? 'text-rose-400' : 'text-emerald-400'}">${escapeHtml(rule[3])}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateJournalPipHints() {
+            if (!accountSettings) return;
+            document.getElementById('tSLPips').placeholder =
+                `${formatNumber(accountSettings.sl_min_pips, 1)}–${formatNumber(accountSettings.sl_max_pips, 1)}`;
+            document.getElementById('tTPPips').placeholder =
+                `${formatNumber(accountSettings.tp_min_pips, 1)}–${formatNumber(accountSettings.tp_max_pips, 1)}`;
+        }
+
+        function convertUSCtoIDR() {
+            const usc = parseOptionalNumber(document.getElementById('calcUSC').value);
+            const idr = document.getElementById('calcIDR');
+            idr.value = usc === null || getExchangeRate() === null
+                ? '—'
+                : `Rp ${Math.round(usc * getExchangeRate()).toLocaleString('id-ID')}`;
+        }
+
+        function calculateLotRisk() {
+            const lot = parseOptionalNumber(document.getElementById('calcLot').value);
+            const slPips = parseOptionalNumber(document.getElementById('calcSLPips').value);
+            const assetPrice = parseOptionalNumber(document.getElementById('calcAssetPrice').value);
+            const values = ['resRiskUSC', 'resRiskIDR', 'resRiskPercent', 'resMarginUSC', 'resRecommendedLot', 'resSafePips'];
+            values.forEach(id => { document.getElementById(id).textContent = '—'; });
+            if (!accountSettings || lot === null || lot <= 0 || slPips === null || slPips <= 0) return;
+
+            const totals = getAccountTotals();
+            const pipValue = Number(accountSettings.pip_value_usc_per_lot);
+            const riskUSC = slPips * lot * pipValue;
+            const riskPercent = totals.currentBalance > 0 ? (riskUSC / totals.currentBalance) * 100 : null;
+            const riskBudget = Math.max(0, totals.currentBalance) * Number(accountSettings.risk_percent) / 100;
+            const recommendedLot = riskBudget / (slPips * pipValue);
+            const marginUSC = assetPrice !== null && assetPrice > 0
+                ? (lot * Number(accountSettings.cent_units_per_lot) * assetPrice) / Number(accountSettings.leverage)
+                : null;
+            const stopOutBuffer = marginUSC === null
+                ? null
+                : totals.currentBalance - (Number(accountSettings.stop_out_level_percent) / 100 * marginUSC);
+            const safePips = stopOutBuffer === null
+                ? null
+                : stopOutBuffer / (lot * pipValue);
+
+            document.getElementById('resRiskUSC').textContent = `-${formatNumber(riskUSC)} USC`;
+            document.getElementById('resRiskIDR').textContent = formatIDR(riskUSC);
+            document.getElementById('resRiskPercent').textContent = riskPercent === null
+                ? '—'
+                : `${formatNumber(riskPercent)}% dari saldo`;
+            document.getElementById('resMarginUSC').textContent = marginUSC === null
+                ? 'Isi harga aset'
+                : `${formatNumber(marginUSC)} USC`;
+            document.getElementById('resRecommendedLot').textContent = `${formatNumber(recommendedLot, 3)} lot`;
+            document.getElementById('resSafePips').textContent = safePips === null
+                ? 'Isi harga aset'
+                : `${formatNumber(safePips, 1)} pips`;
+        }
+
+        function initGrowthChart() {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            growthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Saldo aktual (USC)',
+                            data: [],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Total deposit (USC)',
+                            data: [],
+                            borderColor: '#f59e0b',
+                            borderDash: [6, 5],
+                            borderWidth: 1.5,
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 700, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const usc = Number(context.raw);
+                                    const idr = getExchangeRate() === null ? '' : ` (${formatIDR(usc)})`;
+                                    return `${context.dataset.label}: ${formatNumber(usc)} USC${idr}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(148, 163, 184, 0.16)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(148, 163, 184, 0.16)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+            renderActualMonthlyPerformance();
+        }
+
+        function exportCSV() {
+            if (journalData.length === 0) {
+                alert('Tidak ada data jurnal untuk di-export.');
+                return;
+            }
+
+            let csvContent = 'data:text/csv;charset=utf-8,Tanggal,Pair,Tipe,Lot,Entry,SL_Pips,TP_Pips,Hasil_Pips,Hasil_USC,Hasil_IDR,Status,Catatan\n';
+            journalData.forEach(t => {
+                const values = [
+                    t.date, t.pair, t.type, t.lot, t.entryPrice, t.slPips, t.tpPips,
+                    t.resultPips, t.resultUSC, t.resultIDR, t.status, t.notes
+                ];
+                csvContent += `${values.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `HFM_Trading_Journal_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
